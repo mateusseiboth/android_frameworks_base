@@ -22,6 +22,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SmallTest
 import com.android.internal.logging.uiEventLoggerFake
 import com.android.systemui.Flags.FLAG_DUAL_SHADE
+import com.android.systemui.Flags.FLAG_HSU_QS_CHANGES
 import com.android.systemui.Flags.FLAG_QS_NEW_TILES
 import com.android.systemui.SysuiTestCase
 import com.android.systemui.flags.EnableSceneContainer
@@ -39,6 +40,7 @@ import com.android.systemui.qs.tiles.dialog.audioDetailsViewModelFactory
 import com.android.systemui.shade.domain.interactor.disableDualShade
 import com.android.systemui.shade.domain.interactor.enableDualShade
 import com.android.systemui.testKosmos
+import com.android.systemui.user.data.repository.fakeUserRepository
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -209,5 +211,32 @@ class DetailsViewModelTest : SysuiTestCase() {
             val event = uiEventLoggerFake.get(3)
             assertThat(event.eventId).isEqualTo(QSEvent.QS_DETAILS_CLOSE.id)
             assertThat(event.packageName).isEqualTo(secondTile.tile.metricsSpec)
+        }
+
+    @Test
+    fun settingsButton_isVisible_forAPerson() =
+        kosmos.runTest {
+            fakeUserRepository.setIsCurrentUserHeadlessSystemUser(false)
+
+            assertThat(underTest.isSettingsButtonVisible).isTrue()
+        }
+
+    @Test
+    @EnableFlags(FLAG_HSU_QS_CHANGES)
+    fun settingsButton_isHidden_onTheLoginScreen() =
+        kosmos.runTest {
+            // The headless system user hosts the login screen, where Settings cannot open.
+            fakeUserRepository.setIsCurrentUserHeadlessSystemUser(true)
+
+            assertThat(underTest.isSettingsButtonVisible).isFalse()
+        }
+
+    @Test
+    @DisableFlags(FLAG_HSU_QS_CHANGES)
+    fun settingsButton_isVisible_onTheHeadlessSystemUser_withoutHsuQsChanges() =
+        kosmos.runTest {
+            fakeUserRepository.setIsCurrentUserHeadlessSystemUser(true)
+
+            assertThat(underTest.isSettingsButtonVisible).isTrue()
         }
 }

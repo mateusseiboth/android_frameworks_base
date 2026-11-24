@@ -20,8 +20,14 @@ import com.android.internal.logging.uiEventLoggerFake
 import com.android.systemui.kosmos.Kosmos
 import com.android.systemui.qs.pipeline.domain.interactor.currentTilesInteractor
 import com.android.systemui.shade.domain.interactor.shadeModeInteractor
+import com.android.systemui.user.domain.interactor.selectedUserInteractor
 
 val Kosmos.detailsViewModel by
     Kosmos.Fixture {
-        DetailsViewModel(currentTilesInteractor, shadeModeInteractor, uiEventLoggerFake)
+        DetailsViewModel(
+            currentTilesInteractor,
+            shadeModeInteractor,
+            uiEventLoggerFake,
+            selectedUserInteractor,
+        )
     }
