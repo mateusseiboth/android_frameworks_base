@@ -20,8 +20,13 @@ import android.content.applicationContext
 import com.android.systemui.kosmos.Kosmos
 import com.android.systemui.launcherProxyService
 import dagger.Lazy
+import java.util.Optional
 
 val Kosmos.desktopStatusBarPointerInteractor by
     Kosmos.Fixture {
-        DesktopStatusBarPointerInteractor(applicationContext, Lazy { launcherProxyService })
+        DesktopStatusBarPointerInteractor(
+            applicationContext,
+            Lazy { launcherProxyService },
+            Optional.empty(),
+        )
     }

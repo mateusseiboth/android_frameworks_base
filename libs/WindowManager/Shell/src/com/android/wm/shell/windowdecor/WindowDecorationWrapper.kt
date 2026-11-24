@@ -506,6 +506,14 @@ private constructor(
             else -> error("Expected Non-null default or desktop window decoration")
         }
 
+    /**
+     * Updates the window decoration when the pointer hovers the status bar of its display at
+     * [hoverX], or leaves it (null). Only the default window decoration reacts.
+     */
+    fun onStatusBarHoverChanged(hoverX: Float?) {
+        defaultWindowDecor?.onStatusBarHoverChanged(hoverX)
+    }
+
     /** Updates the window decoration on status bar visibility changed. */
     fun onInsetsStateChanged(insetsState: InsetsState) =
         when {

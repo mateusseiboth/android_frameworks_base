@@ -21,7 +21,9 @@ import com.android.systemui.LauncherProxyService
 import com.android.systemui.dagger.SysUISingleton
 import com.android.systemui.dagger.qualifiers.Application
 import com.android.systemui.res.R
+import com.android.wm.shell.desktopmode.api.DesktopMode
 import dagger.Lazy
+import java.util.Optional
 import javax.inject.Inject
 
 /** Passes pointer input on the desktop status bar to the components that react to it. */
@@ -31,6 +33,7 @@ class DesktopStatusBarPointerInteractor
 constructor(
     @Application private val context: Context,
     private val launcherProxyService: Lazy<LauncherProxyService>,
+    private val desktopMode: Optional<DesktopMode>,
 ) {
 
     /**
@@ -40,5 +43,13 @@ constructor(
     fun onEmptyAreaTapped(displayId: Int) {
         if (!context.resources.getBoolean(R.bool.config_statusBarTapClosesLauncherPanels)) return
         launcherProxyService.get().closeLauncherFloatingViews(displayId)
+    }
+
+    /**
+     * Reports to Shell where a mouse hovers the status bar of [displayId], in display coordinates,
+     * or that it left ([isHovering] false), so the revealed fullscreen header follows the pointer.
+     */
+    fun onHoverChanged(displayId: Int, x: Float, y: Float, isHovering: Boolean) {
+        desktopMode.ifPresent { it.onStatusBarHoverChanged(displayId, isHovering, x, y) }
     }
 }

@@ -818,12 +818,14 @@ public abstract class WMShellModule {
             Optional<DesktopTasksController> desktopTasksController,
             Optional<DesktopFirstListenerManager> desktopFirstListenerManager,
             DesktopHomeScreenPeekController desktopHomeScreenPeekController,
-            @ShellMainThread ShellExecutor mainExecutor) {
+            @ShellMainThread ShellExecutor mainExecutor,
+            Lazy<Optional<DesktopModeWindowDecorViewModel>> desktopModeWindowDecorViewModel) {
         return new DesktopModeImpl(
                 desktopTasksController,
                 desktopFirstListenerManager,
                 desktopHomeScreenPeekController,
-                mainExecutor);
+                mainExecutor,
+                desktopModeWindowDecorViewModel);
     }
 
     @WMSingleton

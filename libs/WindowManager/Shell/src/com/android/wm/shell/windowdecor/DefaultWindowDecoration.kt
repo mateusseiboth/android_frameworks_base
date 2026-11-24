@@ -44,6 +44,7 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.WindowManager.LayoutParams.INPUT_FEATURE_SPY
 import android.view.WindowManager.TRANSIT_CHANGE
+import android.view.WindowInsets
 import android.view.WindowManagerGlobal
 import android.window.DesktopExperienceFlags
 import android.window.DesktopModeFlags
@@ -102,6 +103,7 @@ import com.android.wm.shell.windowdecor.extension.getDimensionPixelSize
 import com.android.wm.shell.windowdecor.extension.isDragResizable
 import com.android.wm.shell.windowdecor.extension.isFullscreen
 import com.android.wm.shell.windowdecor.extension.isTransparentCaptionBarAppearance
+import com.android.wm.shell.windowdecor.extension.requestingImmersive
 import com.android.wm.shell.windowdecor.viewholder.AppHeaderViewHolder
 import com.android.wm.shell.windowdecor.viewholder.FullscreenHeaderViewHolder
 import kotlinx.coroutines.CoroutineScope
@@ -203,6 +205,9 @@ constructor(
 
     private val taskBounds
         get() = taskInfo.getConfiguration().windowConfiguration.bounds
+
+    // Where the pointer hovers the status bar of the task's display, null when it does not.
+    private var statusBarHoverX: Float? = null
 
     private val taskWidth
         get() = taskBounds.width()
@@ -609,11 +614,11 @@ constructor(
         val shouldSetBackground = desktopConfig.shouldSetBackground(taskInfo)
 
         val isCaptionVisible =
-            if (DesktopExperienceFlags.ENABLE_ADD_WINDOW_DECORATION_TO_ALL_TASKS.isTrue) {
+            (if (DesktopExperienceFlags.ENABLE_ADD_WINDOW_DECORATION_TO_ALL_TASKS.isTrue) {
                 shouldShowCaption(taskInfo, captionType)
             } else {
                 shouldShowCaption(taskInfo, lockTaskChangeListener.isTaskLocked)
-            }
+            }) && !isHiddenByStatusBarHover(taskInfo, captionType)
 
         // Task outline (i.e. corner radius and shadows) should update when a task is in desktop
         // windowing with non-fullscreen bounds
@@ -779,6 +784,48 @@ constructor(
                 true
             }
         }
+
+    /**
+     * Updates where the pointer hovers the status bar of the task's display ([hoverX], null when it
+     * does not), relaying out when that changes whether the revealed header shows.
+     */
+    fun onStatusBarHoverChanged(hoverX: Float?) {
+        val wasHidden = isHiddenByStatusBarHover(taskInfo, captionType)
+        statusBarHoverX = hoverX
+        if (wasHidden == isHiddenByStatusBarHover(taskInfo, captionType)) return
+        relayout(taskInfo, hasGlobalFocus, exclusionRegion)
+    }
+
+    /**
+     * Whether the pointer hovering the status bar over another task hides this task's fullscreen
+     * header, which only shows as a reveal (the app is immersive).
+     */
+    private fun isHiddenByStatusBarHover(
+        taskInfo: RunningTaskInfo,
+        captionType: CaptionController.CaptionType,
+    ): Boolean {
+        val hoverX = statusBarHoverX ?: return false
+        if (captionType != CaptionController.CaptionType.FULLSCREEN_HEADER) return false
+        if (!inFullImmersive && !taskInfo.requestingImmersive) return false
+        val insetsState = displayController.getInsetsState(taskInfo.displayId) ?: return false
+        val statusBarBottom =
+            insetsState
+                .calculateInsets(
+                    /* frame= */ insetsState.displayFrame,
+                    /* hostBounds= */ null,
+                    /* types= */ WindowInsets.Type.statusBars(),
+                    /* ignoreVisibility= */ true,
+                )
+                .top
+        val bounds = taskInfo.configuration.windowConfiguration.bounds
+        return !StatusBarHoverHeaderReveal.isHeaderShown(
+            hoverX = hoverX,
+            taskLeft = bounds.left,
+            taskRight = bounds.right,
+            taskTop = bounds.top,
+            statusBarBottom = statusBarBottom,
+        )
+    }
 
     @Deprecated("Use shouldShowCaption(taskInfo)")
     private fun shouldShowCaption(taskInfo: RunningTaskInfo, isTaskLocked: Boolean): Boolean {

@@ -180,6 +180,12 @@ interface HomeStatusBarViewModel : Activatable {
     /** Notifies that the status bar's blank space was clicked. */
     fun onSpacerClicked()
 
+    /**
+     * Notifies where a mouse hovers the status bar, in display coordinates, or that it left the
+     * status bar ([isHovering] false).
+     */
+    fun onStatusBarHoverChanged(x: Float, y: Float, isHovering: Boolean) {}
+
     /** Notifies that the system icons container was clicked. */
     fun onQuickSettingsChipClicked()
 
@@ -523,6 +529,10 @@ constructor(
         // "out-of-bounds click" instead, via SceneContainerViewModel.onEmptySpaceMotionEvent().
         imeIndicatorChipInteractor.hideInputMethodPicker(thisDisplayId)
         desktopStatusBarPointerInteractor.onEmptyAreaTapped(thisDisplayId)
+    }
+
+    override fun onStatusBarHoverChanged(x: Float, y: Float, isHovering: Boolean) {
+        desktopStatusBarPointerInteractor.onHoverChanged(thisDisplayId, x, y, isHovering)
     }
 
     override fun onStatusBarLongPressed() {

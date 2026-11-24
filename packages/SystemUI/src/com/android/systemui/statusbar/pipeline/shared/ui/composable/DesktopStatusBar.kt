@@ -39,11 +39,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.PointerEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -115,7 +122,10 @@ fun DesktopStatusBar(
         modifier =
             // TODO(b/478352392): Move this padding to clickable Row below (after applying the
             // clickable modifier), so it's included in the click target. Ref: b/494287030.
-            modifier.fillMaxSize().padding(start = DesktopStatusBar.Dimensions.PaddingHorizontal),
+            modifier
+                .fillMaxSize()
+                .statusBarHover(viewModel)
+                .padding(start = DesktopStatusBar.Dimensions.PaddingHorizontal),
     ) {
         WithAdaptiveTint(
             highlightModel = ChipHighlightModel.Transparent,
@@ -421,5 +431,49 @@ private fun SignOutButton(onSignOut: () -> Unit) {
             text = stringResource(com.android.internal.R.string.global_action_logout),
             modifier = Modifier.wrapContentHeight(unbounded = true),
         )
+    }
+}
+
+/** Smallest pointer move over the status bar that is reported again. */
+private val StatusBarHoverReportThreshold = 8.dp
+
+/**
+ * Reports where a mouse hovers the status bar to [viewModel], in window coordinates, which are the
+ * display's: the desktop status bar window sits at the display's top left corner.
+ */
+@Composable
+private fun Modifier.statusBarHover(viewModel: HomeStatusBarViewModel): Modifier {
+    val coordinates = remember { mutableStateOf<LayoutCoordinates?>(null) }
+    return onGloballyPositioned { coordinates.value = it }
+        .pointerInput(viewModel) {
+            val reporter = StatusBarHoverReporter(StatusBarHoverReportThreshold.toPx())
+            awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    onStatusBarHoverEvent(event, reporter, coordinates.value, viewModel)
+                }
+            }
+        }
+}
+
+private fun onStatusBarHoverEvent(
+    event: PointerEvent,
+    reporter: StatusBarHoverReporter,
+    coordinates: LayoutCoordinates?,
+    viewModel: HomeStatusBarViewModel,
+) {
+    val change = event.changes.firstOrNull() ?: return
+    if (change.type != PointerType.Mouse) return
+    when (event.type) {
+        PointerEventType.Enter,
+        PointerEventType.Move -> {
+            val position = coordinates?.localToWindow(change.position) ?: change.position
+            if (!reporter.shouldReportMove(position.x, position.y)) return
+            viewModel.onStatusBarHoverChanged(position.x, position.y, isHovering = true)
+        }
+        PointerEventType.Exit -> {
+            if (!reporter.shouldReportExit()) return
+            viewModel.onStatusBarHoverChanged(0f, 0f, isHovering = false)
+        }
     }
 }

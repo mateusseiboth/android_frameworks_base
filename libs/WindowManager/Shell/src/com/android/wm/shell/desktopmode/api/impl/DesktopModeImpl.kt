@@ -32,6 +32,8 @@ import com.android.wm.shell.shared.annotations.ShellMainThread
 import com.android.wm.shell.shared.desktopmode.DesktopFirstListener
 import com.android.wm.shell.shared.desktopmode.DesktopModeTransitionSource
 import com.android.wm.shell.shared.desktopmode.DesktopScrimListener
+import com.android.wm.shell.windowdecor.DesktopModeWindowDecorViewModel
+import dagger.Lazy
 import java.util.Optional
 import java.util.concurrent.Executor
 import java.util.function.Consumer
@@ -44,6 +46,7 @@ class DesktopModeImpl(
     private val desktopFirstListenerManager: Optional<DesktopFirstListenerManager>,
     private val desktopHomeScreenPeekController: DesktopHomeScreenPeekController,
     @ShellMainThread private val mainExecutor: ShellExecutor,
+    private val windowDecorViewModel: Lazy<Optional<DesktopModeWindowDecorViewModel>>,
 ) : DesktopMode {
     override fun addVisibleTasksListener(
         listener: VisibleTasksListener,
@@ -188,6 +191,12 @@ class DesktopModeImpl(
             } else {
                 desktopHomeScreenPeekController.peek()
             }
+        }
+    }
+
+    override fun onStatusBarHoverChanged(displayId: Int, isHovering: Boolean, x: Float, y: Float) {
+        mainExecutor.execute {
+            windowDecorViewModel.get().getOrNull()?.onStatusBarHoverChanged(displayId, isHovering, x)
         }
     }
 

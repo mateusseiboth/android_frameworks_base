@@ -21,7 +21,9 @@ import androidx.test.filters.SmallTest
 import com.android.systemui.LauncherProxyService
 import com.android.systemui.SysuiTestCase
 import com.android.systemui.res.R
+import com.android.wm.shell.desktopmode.api.DesktopMode
 import dagger.Lazy
+import java.util.Optional
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.any
@@ -34,9 +36,14 @@ import org.mockito.kotlin.verify
 class DesktopStatusBarPointerInteractorTest : SysuiTestCase() {
 
     private val launcherProxyService = mock<LauncherProxyService>()
+    private val desktopMode = mock<DesktopMode>()
 
     private fun createInteractor() =
-        DesktopStatusBarPointerInteractor(mContext, Lazy { launcherProxyService })
+        DesktopStatusBarPointerInteractor(
+            mContext,
+            Lazy { launcherProxyService },
+            Optional.of(desktopMode),
+        )
 
     @Test
     fun emptyAreaTap_closesLauncherFloatingViewsOnItsDisplay() {
@@ -54,5 +61,19 @@ class DesktopStatusBarPointerInteractorTest : SysuiTestCase() {
         createInteractor().onEmptyAreaTapped(displayId = 0)
 
         verify(launcherProxyService, never()).closeLauncherFloatingViews(any())
+    }
+
+    @Test
+    fun hover_reportsPositionToShell() {
+        createInteractor().onHoverChanged(displayId = 1, x = 120f, y = 12f, isHovering = true)
+
+        verify(desktopMode).onStatusBarHoverChanged(1, true, 120f, 12f)
+    }
+
+    @Test
+    fun hoverExit_reportsToShell() {
+        createInteractor().onHoverChanged(displayId = 1, x = 0f, y = 0f, isHovering = false)
+
+        verify(desktopMode).onStatusBarHoverChanged(1, false, 0f, 0f)
     }
 }
