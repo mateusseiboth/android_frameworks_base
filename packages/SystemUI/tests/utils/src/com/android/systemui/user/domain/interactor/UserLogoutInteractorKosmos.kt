@@ -18,12 +18,14 @@ package com.android.systemui.user.domain.interactor
 
 import com.android.systemui.kosmos.Kosmos
 import com.android.systemui.kosmos.applicationCoroutineScope
+import com.android.systemui.statusbar.policy.domain.interactor.userSetupInteractor
 import com.android.systemui.user.data.repository.userRepository
 
 val Kosmos.userLogoutInteractor by
     Kosmos.Fixture {
         UserLogoutInteractor(
             userRepository = userRepository,
+            userSetupInteractor = userSetupInteractor,
             applicationScope = applicationCoroutineScope,
         )
     }

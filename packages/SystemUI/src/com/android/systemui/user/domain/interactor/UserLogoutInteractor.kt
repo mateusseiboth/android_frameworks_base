@@ -20,6 +20,7 @@ package com.android.systemui.user.domain.interactor
 import com.android.app.tracing.coroutines.launchTraced as launch
 import com.android.systemui.dagger.SysUISingleton
 import com.android.systemui.dagger.qualifiers.Application
+import com.android.systemui.statusbar.policy.domain.interactor.UserSetupInteractor
 import com.android.systemui.user.data.repository.UserRepository
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -28,24 +29,41 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-/** Encapsulates business logic to for the logout. */
+/**
+ * Encapsulates business logic to for the logout.
+ *
+ * A user still in setup finishes it before signing out or leaving for the login screen, so a
+ * half set up user is not left behind.
+ */
 @SysUISingleton
 class UserLogoutInteractor
 @Inject
 constructor(
     private val userRepository: UserRepository,
+    userSetupInteractor: UserSetupInteractor,
     @Application private val applicationScope: CoroutineScope,
 ) {
+    private val isUserSetUp = userSetupInteractor.isUserSetUp
 
     val isLogoutEnabled: StateFlow<Boolean> =
         combine(
                 userRepository.isPolicyManagerLogoutEnabled,
                 userRepository.isUserManagerLogoutEnabled,
-                Boolean::or,
-            )
+                isUserSetUp,
+            ) { policy, userManager, setUp ->
+                setUp && (policy || userManager)
+            }
             .stateIn(applicationScope, SharingStarted.Eagerly, false)
 
-    val isLogoutToSystemUserEnabled: StateFlow<Boolean> = userRepository.isUserManagerLogoutEnabled
+    val isLogoutToSystemUserEnabled: StateFlow<Boolean> =
+        combine(userRepository.isUserManagerLogoutEnabled, isUserSetUp, Boolean::and)
+            .stateIn(applicationScope, SharingStarted.Eagerly, false)
+
+    /**
+     * Whether the user can go to the login screen and keep running: possible wherever signing out
+     * goes to the login screen (the headless system user).
+     */
+    val isSwitchToLoginScreenEnabled: StateFlow<Boolean> = isLogoutToSystemUserEnabled
 
     val isPolicyManagerLogoutEnabled: StateFlow<Boolean> =
         userRepository.isPolicyManagerLogoutEnabled
@@ -57,6 +75,7 @@ constructor(
     }
 
     fun logOut() {
+        if (!isLogoutEnabled.value) return
         applicationScope.launch {
             if (userRepository.isPolicyManagerLogoutEnabled.value) {
                 userRepository.logOutWithPolicyManager()
@@ -64,5 +83,11 @@ constructor(
                 userRepository.logOutWithUserManager()
             }
         }
+    }
+
+    /** Shows the login screen without signing the user out. */
+    fun switchToLoginScreen() {
+        if (!isSwitchToLoginScreenEnabled.value) return
+        applicationScope.launch { userRepository.switchToLoginScreen() }
     }
 }

@@ -24,6 +24,7 @@ import com.android.systemui.SysuiTestCase
 import com.android.systemui.coroutines.collectLastValue
 import com.android.systemui.kosmos.testScope
 import com.android.systemui.kosmos.useUnconfinedTestDispatcher
+import com.android.systemui.statusbar.policy.data.repository.fakeUserSetupRepository
 import com.android.systemui.testKosmos
 import com.android.systemui.user.data.repository.fakeUserRepository
 import com.google.common.truth.Truth.assertThat
@@ -147,6 +148,85 @@ class UserLogoutInteractorTest : SysuiTestCase() {
                 .isEqualTo(secondaryUserLogoutCount)
             assertThat(userRepository.logOutWithUserManagerCallCount)
                 .isEqualTo(logoutToSystemUserCount + 1)
+        }
+    }
+
+    @Test
+    fun logOut_isDisabled_whileTheUserIsInSetup() {
+        testScope.runTest {
+            val isLogoutEnabled by collectLastValue(underTest.isLogoutEnabled)
+            val isLogoutToSystemUserEnabled by
+                collectLastValue(underTest.isLogoutToSystemUserEnabled)
+            val policyLogoutCount = userRepository.logOutWithPolicyManagerCallCount
+            val userManagerLogoutCount = userRepository.logOutWithUserManagerCallCount
+            userRepository.setUserManagerLogoutEnabled(true)
+            userRepository.setPolicyManagerLogoutEnabled(true)
+            kosmos.fakeUserSetupRepository.setUserSetUp(false)
+
+            assertThat(isLogoutEnabled).isFalse()
+            assertThat(isLogoutToSystemUserEnabled).isFalse()
+            underTest.logOut()
+            underTest.logOutToSystemUser()
+            assertThat(userRepository.logOutWithPolicyManagerCallCount)
+                .isEqualTo(policyLogoutCount)
+            assertThat(userRepository.logOutWithUserManagerCallCount)
+                .isEqualTo(userManagerLogoutCount)
+        }
+    }
+
+    @Test
+    fun logOut_comesBack_whenTheUserFinishesSetup() {
+        testScope.runTest {
+            val isLogoutEnabled by collectLastValue(underTest.isLogoutEnabled)
+            userRepository.setUserManagerLogoutEnabled(true)
+            kosmos.fakeUserSetupRepository.setUserSetUp(false)
+            assertThat(isLogoutEnabled).isFalse()
+
+            kosmos.fakeUserSetupRepository.setUserSetUp(true)
+
+            assertThat(isLogoutEnabled).isTrue()
+        }
+    }
+
+    @Test
+    fun switchToLoginScreen_switches_whenLogoutToSystemUserIsEnabled() {
+        testScope.runTest {
+            val isSwitchEnabled by collectLastValue(underTest.isSwitchToLoginScreenEnabled)
+            val switchCount = userRepository.switchToLoginScreenCallCount
+            userRepository.setUserManagerLogoutEnabled(true)
+
+            assertThat(isSwitchEnabled).isTrue()
+            underTest.switchToLoginScreen()
+            assertThat(userRepository.switchToLoginScreenCallCount).isEqualTo(switchCount + 1)
+            assertThat(userRepository.logOutWithUserManagerCallCount).isEqualTo(0)
+        }
+    }
+
+    @Test
+    fun switchToLoginScreen_doesNothing_withoutALoginScreen() {
+        testScope.runTest {
+            val isSwitchEnabled by collectLastValue(underTest.isSwitchToLoginScreenEnabled)
+            val switchCount = userRepository.switchToLoginScreenCallCount
+            // Policy logout signs out to the previous user, not to a login screen.
+            userRepository.setPolicyManagerLogoutEnabled(true)
+
+            assertThat(isSwitchEnabled).isFalse()
+            underTest.switchToLoginScreen()
+            assertThat(userRepository.switchToLoginScreenCallCount).isEqualTo(switchCount)
+        }
+    }
+
+    @Test
+    fun switchToLoginScreen_doesNothing_whileTheUserIsInSetup() {
+        testScope.runTest {
+            val isSwitchEnabled by collectLastValue(underTest.isSwitchToLoginScreenEnabled)
+            val switchCount = userRepository.switchToLoginScreenCallCount
+            userRepository.setUserManagerLogoutEnabled(true)
+            kosmos.fakeUserSetupRepository.setUserSetUp(false)
+
+            assertThat(isSwitchEnabled).isFalse()
+            underTest.switchToLoginScreen()
+            assertThat(userRepository.switchToLoginScreenCallCount).isEqualTo(switchCount)
         }
     }
 

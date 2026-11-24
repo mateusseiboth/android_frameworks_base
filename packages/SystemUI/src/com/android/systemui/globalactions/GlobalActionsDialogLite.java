@@ -877,6 +877,11 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
                         addIfShouldShowAction(tempActions, new LogoutAction());
                     }
                     break;
+                case SWITCH_USER:
+                    if (mLogoutInteractor.isSwitchToLoginScreenEnabled().getValue()) {
+                        addIfShouldShowAction(tempActions, new SwitchUserAction());
+                    }
+                    break;
                 case SYSTEM_UPDATE:
                     addIfShouldShowAction(tempActions, new SystemUpdateAction());
                     break;
@@ -1449,6 +1454,30 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
             // Add a little delay before executing, to give the dialog a chance to go away before
             // switching user
             mHandler.postDelayed(mLogoutInteractor::logOut, mDialogPressDelay);
+        }
+    }
+
+    /** Shows the login screen and keeps the current user signed in. */
+    private final class SwitchUserAction extends SinglePressAction {
+        private SwitchUserAction() {
+            super(com.android.systemui.res.R.drawable.ic_global_actions_switch_user,
+                    com.android.systemui.res.R.string.global_action_switch_user);
+        }
+
+        @Override
+        public boolean showDuringKeyguard() {
+            return true;
+        }
+
+        @Override
+        public boolean showBeforeProvisioning() {
+            return false;
+        }
+
+        @Override
+        public void onPress() {
+            // Let the dialog go away before the user switch starts.
+            mHandler.postDelayed(mLogoutInteractor::switchToLoginScreen, mDialogPressDelay);
         }
     }
 
