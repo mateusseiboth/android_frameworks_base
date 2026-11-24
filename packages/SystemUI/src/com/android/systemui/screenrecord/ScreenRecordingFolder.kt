@@ -23,6 +23,7 @@ object ScreenRecordingFolder {
      * The MediaStore relative path for the configured folder, or null to keep the default folder of
      * videos.
      */
+    @JvmStatic
     fun relativePathOf(configuredFolder: String): String? =
         configuredFolder.trim().trim('/').takeUnless { it.isEmpty() }
 }
