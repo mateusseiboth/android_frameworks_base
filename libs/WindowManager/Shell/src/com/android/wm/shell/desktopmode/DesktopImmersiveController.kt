@@ -54,6 +54,8 @@ class DesktopImmersiveController(
     private val shellTaskOrganizer: ShellTaskOrganizer,
     private val shellCommandHandler: ShellCommandHandler,
     private val transactionSupplier: () -> SurfaceControl.Transaction,
+    private val fullImmersivePolicy: DesktopFullImmersivePolicy =
+        DesktopFullImmersivePolicy(isFullImmersiveDisabled = false),
 ) : TransitionHandler, TransitionObserver {
 
     constructor(
@@ -63,6 +65,7 @@ class DesktopImmersiveController(
         displayController: DisplayController,
         shellTaskOrganizer: ShellTaskOrganizer,
         shellCommandHandler: ShellCommandHandler,
+        fullImmersivePolicy: DesktopFullImmersivePolicy,
     ) : this(
         shellInit,
         transitions,
@@ -71,6 +74,7 @@ class DesktopImmersiveController(
         shellTaskOrganizer,
         shellCommandHandler,
         { SurfaceControl.Transaction() },
+        fullImmersivePolicy,
     )
 
     @VisibleForTesting val pendingImmersiveTransitions = mutableListOf<PendingTransition>()
@@ -95,6 +99,10 @@ class DesktopImmersiveController(
     /** Starts a transition to enter full immersive state inside the desktop. */
     fun moveTaskToImmersive(taskInfo: RunningTaskInfo) {
         check(taskInfo.isFreeform) { "Task must already be in freeform" }
+        if (!fullImmersivePolicy.canEnter()) {
+            logV("Full immersive is disabled, task %d keeps its bounds", taskInfo.taskId)
+            return
+        }
         if (inProgress) {
             logV(
                 "Cannot start entry because transition(s) already in progress: %s",

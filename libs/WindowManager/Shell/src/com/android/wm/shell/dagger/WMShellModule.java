@@ -103,6 +103,7 @@ import com.android.wm.shell.desktopmode.DesktopAnimationConfiguration;
 import com.android.wm.shell.desktopmode.DesktopBackNavTransitionObserver;
 import com.android.wm.shell.desktopmode.DesktopDisplayEventHandler;
 import com.android.wm.shell.desktopmode.DesktopImeHandler;
+import com.android.wm.shell.desktopmode.DesktopFullImmersivePolicyFactory;
 import com.android.wm.shell.desktopmode.DesktopImmersiveController;
 import com.android.wm.shell.desktopmode.DesktopInOrderTransitionObserver;
 import com.android.wm.shell.desktopmode.DesktopMinimizationTransitionHandler;
@@ -1077,6 +1078,7 @@ public abstract class WMShellModule {
     @WMSingleton
     @Provides
     static Optional<DesktopImmersiveController> provideDesktopImmersiveController(
+            Context context,
             ShellInit shellInit,
             Transitions transitions,
             @DynamicOverride DesktopUserRepositories desktopUserRepositories,
@@ -1092,7 +1094,9 @@ public abstract class WMShellModule {
                             desktopUserRepositories,
                             displayController,
                             shellTaskOrganizer,
-                            shellCommandHandler));
+                            shellCommandHandler,
+                            DesktopFullImmersivePolicyFactory.buildDesktopFullImmersivePolicy(
+                                    context)));
         }
         return Optional.empty();
     }

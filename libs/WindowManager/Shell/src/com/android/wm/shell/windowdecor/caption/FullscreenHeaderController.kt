@@ -49,6 +49,7 @@ import com.android.wm.shell.desktopmode.DesktopModeUiEventLogger
 import com.android.wm.shell.desktopmode.DesktopModeUiEventLogger.DesktopUiEventEnum
 import com.android.wm.shell.desktopmode.DesktopUserRepositories
 import com.android.wm.shell.desktopmode.WindowDecorCaptionRepository
+import com.android.wm.shell.desktopmode.buildDesktopFullImmersivePolicy
 import com.android.wm.shell.shared.FocusTransitionListener
 import com.android.wm.shell.shared.annotations.ShellBackgroundThread
 import com.android.wm.shell.shared.annotations.ShellMainThread
@@ -167,6 +168,7 @@ class FullscreenHeaderController(
 
     private val closeLayoutMenuRunnable = Runnable { closeLayoutMenu() }
     private val dimensions = LargeHeaderDimensions(decorWindowContext.resources)
+    private val fullImmersivePolicy = buildDesktopFullImmersivePolicy(decorWindowContext)
 
     private var isLayoutMenuHovered = false
     private var isFullscreenHeaderExitFullscreenButtonHovered = false
@@ -329,7 +331,10 @@ class FullscreenHeaderController(
                 .apply {
                     show(
                         isTaskInImmersiveMode = false,
-                        showImmersiveOption = taskInfo.requestingImmersive,
+                        showImmersiveOption =
+                            fullImmersivePolicy.shouldOfferImmersiveOption(
+                                taskInfo.requestingImmersive
+                            ),
                         showSnapOptions = taskInfo.isResizeable,
                         onHoverListener = { hovered: Boolean ->
                             isLayoutMenuHovered = hovered
