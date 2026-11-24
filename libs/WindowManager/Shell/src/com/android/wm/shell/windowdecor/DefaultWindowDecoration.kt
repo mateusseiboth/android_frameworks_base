@@ -67,6 +67,7 @@ import com.android.wm.shell.desktopmode.DesktopModeUiEventLogger
 import com.android.wm.shell.desktopmode.DesktopTasksController
 import com.android.wm.shell.desktopmode.DesktopUserRepositories
 import com.android.wm.shell.desktopmode.WindowDecorCaptionRepository
+import com.android.wm.shell.desktopmode.isTaskMaximized
 import com.android.wm.shell.desktopmode.desktopfirst.isDisplayDesktopFirst
 import com.android.wm.shell.pinnedlayer.phone.PinnedLayerController
 import com.android.wm.shell.recents.PerDisplayRecentsTransitionStateListener
@@ -613,7 +614,8 @@ constructor(
             insetSourceFlags = insetSourceFlags,
             displayExclusionRegion = Region.obtain(displayExclusionRegion),
             shadowRadiusId = getShadowRadiusId(captionType, hasGlobalFocus),
-            cornerRadiusId = getCornerRadiusId(captionType, shouldIgnoreCornerRadius),
+            cornerRadiusId =
+                getCornerRadiusId(captionType, shouldIgnoreCornerRadius || isMaximized(taskInfo)),
             borderSettingsId = getBorderSettingsId(captionType, taskInfo, hasGlobalFocus),
             boxShadowSettingsIds = getShadowSettingsIds(captionType, hasGlobalFocus),
             isCaptionVisible = isCaptionVisible,
@@ -698,6 +700,12 @@ constructor(
         } else {
             com.android.wm.shell.shared.R.dimen.desktop_windowing_freeform_rounded_corner_radius
         }
+
+    /** A window filling the stable bounds has square corners, as on Googlebook. */
+    private fun isMaximized(taskInfo: RunningTaskInfo): Boolean {
+        val displayLayout = displayController.getDisplayLayout(taskInfo.displayId) ?: return false
+        return isTaskMaximized(taskInfo, displayLayout)
+    }
 
     private fun shouldDecorateBorders(captionType: CaptionController.CaptionType) =
         when (captionType) {
@@ -847,7 +855,7 @@ constructor(
     }
 
     private fun getCornerRadius(): Int {
-        val shouldIgnoreCornerRadius = isRecentsTransitionRunning
+        val shouldIgnoreCornerRadius = isRecentsTransitionRunning || isMaximized(taskInfo)
         return decorWindowContext.resources.getDimensionPixelSize(
             getCornerRadiusId(captionType, shouldIgnoreCornerRadius),
             defaultValue = 0,

@@ -17,6 +17,8 @@
 package com.android.wm.shell.windowdecor
 
 import android.app.ActivityManager.RunningTaskInfo
+import android.content.res.Resources
+import android.graphics.Rect
 import android.graphics.Region
 import android.os.Looper
 import android.platform.test.annotations.EnableFlags
@@ -31,6 +33,7 @@ import com.android.wm.shell.ShellTestCase
 import com.android.wm.shell.TestHandler
 import com.android.wm.shell.TestShellExecutor
 import com.android.wm.shell.common.DisplayController
+import com.android.wm.shell.common.DisplayLayout
 import com.android.wm.shell.desktopmode.DesktopTasksController
 import com.android.wm.shell.desktopmode.DesktopTestHelpers.createFullscreenTask
 import com.android.wm.shell.desktopmode.DesktopUserRepositories
@@ -41,6 +44,7 @@ import com.android.wm.shell.sysui.ShellInit
 import com.android.wm.shell.windowdecor.WindowDecorationTestHelper.addInsetsSource
 import com.android.wm.shell.windowdecor.common.CaptionVisibilityHelper
 import com.android.wm.shell.windowdecor.common.WindowDecorationGestureExclusionTracker
+import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
@@ -216,6 +220,39 @@ class DefaultWindowDecorationTests : ShellTestCase() {
         return wrappedDecoration.defaultWindowDecoration
     }
 
+    @Test
+    fun cornerRadius_maximizedTask_isSquare() {
+        val task = WindowDecorationTestHelper.createAppHeaderTask(bounds = Rect(STABLE_BOUNDS))
+        setUpStableBounds(task)
+        val decoration = setUpWindowDecoration(task)
+
+        val relayoutParams = decoration.getRelayoutParams(task)
+
+        assertThat(relayoutParams.cornerRadiusId).isEqualTo(Resources.ID_NULL)
+    }
+
+    @Test
+    fun cornerRadius_floatingTask_isRounded() {
+        val task = WindowDecorationTestHelper.createAppHeaderTask()
+        setUpStableBounds(task)
+        val decoration = setUpWindowDecoration(task)
+
+        val relayoutParams = decoration.getRelayoutParams(task)
+
+        assertThat(relayoutParams.cornerRadiusId)
+            .isEqualTo(
+                com.android.wm.shell.shared.R.dimen.desktop_windowing_freeform_rounded_corner_radius
+            )
+    }
+
+    private fun setUpStableBounds(task: RunningTaskInfo) {
+        val displayLayout = mock<DisplayLayout>()
+        whenever(displayLayout.getStableBounds(any())).thenAnswer {
+            (it.arguments[0] as Rect).set(STABLE_BOUNDS)
+        }
+        whenever(mockDisplayController.getDisplayLayout(task.displayId)).thenReturn(displayLayout)
+    }
+
     private fun DefaultWindowDecoration.getRelayoutParams(
         taskInfo: RunningTaskInfo,
         applyStartTransactionOnDraw: Boolean = false,
@@ -241,5 +278,6 @@ class DefaultWindowDecorationTests : ShellTestCase() {
 
     companion object {
         private const val DEFAULT_DESK_ID = 0
+        private val STABLE_BOUNDS = Rect(0, 0, 1920, 1032)
     }
 }
