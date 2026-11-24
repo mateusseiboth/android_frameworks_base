@@ -153,6 +153,30 @@ class WindowDecorTaskResourceLoaderTest : ShellTestCase() {
     }
 
     @Test
+    fun testGetNameAndHeaderIcon_activityWithItsOwnLabel_usesTheBaseIntentLabel() = runTest {
+        val task = createTaskInfo(context.userId)
+        task.topActivityInfo!!.nonLocalizedLabel = "Inbox"
+        loader.onWindowDecorCreated(task)
+
+        val result = loader.getNameAndHeaderIcon(task)
+        advanceUntilIdle()
+
+        assertThat(result.first.toString()).isEqualTo("Inbox")
+        assertThat(loader.taskToResourceCache[task.taskId]?.appName.toString()).isEqualTo("Inbox")
+    }
+
+    @Test
+    fun testGetNameAndHeaderIcon_activityWithoutALabel_usesTheAppLabel() = runTest {
+        val task = createTaskInfo(context.userId)
+        loader.onWindowDecorCreated(task)
+
+        val result = loader.getNameAndHeaderIcon(task)
+        advanceUntilIdle()
+
+        assertThat(result.first).isEqualTo("Test App")
+    }
+
+    @Test
     fun testGetNameAndHeaderIcon_cached_returnsFromCache() = runTest {
         val task = createTaskInfo(context.userId)
         task.configuration.setLocales(LocaleList(Locale.US))

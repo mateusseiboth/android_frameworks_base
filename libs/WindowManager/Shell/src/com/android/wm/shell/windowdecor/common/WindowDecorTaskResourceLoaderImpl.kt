@@ -197,7 +197,7 @@ class WindowDecorTaskResourceLoaderImpl(
             try {
                 val pm = userProfilesContexts.getOrCreate(taskInfo.userId).packageManager
                 val activityInfo = getActivityInfo(taskInfo, pm)
-                val appName = pm.getApplicationLabel(activityInfo.applicationInfo)
+                val appName = loadAppName(activityInfo, pm)
                 val appIconDrawable = iconProvider.getIcon(activityInfo)
                 val badgedAppIconDrawable =
                     pm.getUserBadgedIcon(appIconDrawable, taskInfo.userHandle())
@@ -228,6 +228,14 @@ class WindowDecorTaskResourceLoaderImpl(
                 Trace.endSection()
             }
         }
+
+    /**
+     * The label of the task's base intent activity when it has one (an app with several launcher
+     * entries, such as Contacts and Phone, names each), else the app's label.
+     */
+    private fun loadAppName(activityInfo: ActivityInfo, pm: PackageManager): CharSequence =
+        activityInfo.takeIf { it.labelRes != 0 || it.nonLocalizedLabel != null }?.loadLabel(pm)
+            ?: pm.getApplicationLabel(activityInfo.applicationInfo)
 
     private fun getActivityInfo(taskInfo: RunningTaskInfo, pm: PackageManager): ActivityInfo {
         return pm.getActivityInfo(taskInfo.component(), /* flags= */ 0)
