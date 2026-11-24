@@ -39,6 +39,7 @@ import com.android.wm.shell.common.DisplayController
 import com.android.wm.shell.common.ShellExecutor
 import com.android.wm.shell.desktopmode.DesktopModeEventLogger.Companion.EnterReason
 import com.android.wm.shell.desktopmode.DesktopModeEventLogger.Companion.MinimizeReason
+import com.android.wm.shell.desktopmode.FocusedWindowDeskResolver.Direction
 import com.android.wm.shell.desktopmode.common.ToggleTaskSizeInteraction
 import com.android.wm.shell.protolog.ShellProtoLogGroup.WM_SHELL_DESKTOP_MODE
 import com.android.wm.shell.shared.annotations.ShellMainThread
@@ -83,6 +84,8 @@ class DesktopModeKeyGestureHandler(
                     KeyGestureEvent.KEY_GESTURE_TYPE_SWITCH_TO_NEXT_DESK,
                     KeyGestureEvent.KEY_GESTURE_TYPE_QUIT_FOCUSED_DESKTOP_TASK,
                     KeyGestureEvent.KEY_GESTURE_TYPE_TOGGLE_FULLSCREEN,
+                    KeyGestureEvent.KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_PREVIOUS_DESK,
+                    KeyGestureEvent.KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_NEXT_DESK,
                 )
             inputManager.registerKeyGestureEventHandler(supportedGestures, this)
         }
@@ -137,6 +140,14 @@ class DesktopModeKeyGestureHandler(
                             enterReason = EnterReason.KEYBOARD_SHORTCUT_ENTER,
                         )
                 }
+            }
+            KeyGestureEvent.KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_PREVIOUS_DESK -> {
+                logV("Key gesture MOVE_FOCUSED_TASK_TO_PREVIOUS_DESK is handled")
+                moveGloballyFocusedDesktopTaskToDesk(Direction.PREVIOUS)
+            }
+            KeyGestureEvent.KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_NEXT_DESK -> {
+                logV("Key gesture MOVE_FOCUSED_TASK_TO_NEXT_DESK is handled")
+                moveGloballyFocusedDesktopTaskToDesk(Direction.NEXT)
             }
             KeyGestureEvent.KEY_GESTURE_TYPE_SNAP_LEFT_FREEFORM_WINDOW -> {
                 logV("Key gesture SNAP_LEFT_FREEFORM_WINDOW is handled")
@@ -255,6 +266,33 @@ class DesktopModeKeyGestureHandler(
         logV("Found focused desktop task %d to close", focusedTask.taskId)
         mainExecutor.execute { desktopModeWindowDecorViewModel.get().closeTask(focusedTask) }
         return true
+    }
+
+    /** Moves the globally focused desktop window to the desk next to its own in [direction]. */
+    private fun moveGloballyFocusedDesktopTaskToDesk(direction: Direction) {
+        val task = getGloballyFocusedDesktopTask() ?: return
+        val repository = desktopUserRepositories.current
+        val resolver =
+            FocusedWindowDeskResolver(
+                previousDeskOf = repository::getPreviousDeskId,
+                nextDeskOf = repository::getNextDeskId,
+            )
+        val targetDeskId =
+            resolver.findTargetDeskId(repository.getDeskIdForTask(task.taskId), direction)
+        if (targetDeskId == null) {
+            logV("No desk %s the one of task %d", direction, task.taskId)
+            return
+        }
+        mainExecutor.execute {
+            desktopTasksController
+                .get()
+                .moveTaskToDesk(
+                    taskId = task.taskId,
+                    deskId = targetDeskId,
+                    userId = repository.userId,
+                    transitionSource = DesktopModeTransitionSource.KEYBOARD_SHORTCUT,
+                )
+        }
     }
 
     //  TODO: b/364154795 - wait for the completion of moveToNextDisplay transition, otherwise it

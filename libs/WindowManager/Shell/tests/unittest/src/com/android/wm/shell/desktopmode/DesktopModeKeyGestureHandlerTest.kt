@@ -73,6 +73,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -501,6 +502,66 @@ class DesktopModeKeyGestureHandlerTest : ShellTestCase() {
 
         verify(desktopTasksController)
             .activateNextDesk(displayId, DEFAULT_USER_ID, EnterReason.KEYBOARD_SHORTCUT_ENTER)
+    }
+
+    @Test
+    fun keyGestureMoveFocusedTaskToNextDesk_movesTaskToNextDesk() {
+        repository.addDesk(displayId = DEFAULT_DISPLAY, deskId = 12)
+        val task = setUpDesktopTask()
+        whenever(focusTransitionObserver.hasGlobalFocus(eq(task))).thenReturn(true)
+        val event =
+            KeyGestureEvent.Builder()
+                .setKeyGestureType(
+                    KeyGestureEvent.KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_NEXT_DESK
+                )
+                .build()
+
+        keyGestureEventHandler.handleKeyGestureEvent(event, null)
+        testExecutor.flushAll()
+
+        verify(desktopTasksController)
+            .moveTaskToDesk(
+                taskId = task.taskId,
+                deskId = 12,
+                userId = DEFAULT_USER_ID,
+                transitionSource = DesktopModeTransitionSource.KEYBOARD_SHORTCUT,
+            )
+    }
+
+    @Test
+    fun keyGestureMoveFocusedTaskToPreviousDesk_firstDesk_doesNothing() {
+        repository.addDesk(displayId = DEFAULT_DISPLAY, deskId = 12)
+        val task = setUpDesktopTask()
+        whenever(focusTransitionObserver.hasGlobalFocus(eq(task))).thenReturn(true)
+        val event =
+            KeyGestureEvent.Builder()
+                .setKeyGestureType(
+                    KeyGestureEvent.KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_PREVIOUS_DESK
+                )
+                .build()
+
+        keyGestureEventHandler.handleKeyGestureEvent(event, null)
+        testExecutor.flushAll()
+
+        verify(desktopTasksController, never())
+            .moveTaskToDesk(any(), any(), any(), any(), any(), anyOrNull(), anyOrNull(), anyOrNull())
+    }
+
+    @Test
+    fun keyGestureMoveFocusedTaskToPreviousDesk_noFocusedDesktopTask_doesNothing() {
+        repository.addDesk(displayId = DEFAULT_DISPLAY, deskId = 12)
+        val event =
+            KeyGestureEvent.Builder()
+                .setKeyGestureType(
+                    KeyGestureEvent.KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_PREVIOUS_DESK
+                )
+                .build()
+
+        keyGestureEventHandler.handleKeyGestureEvent(event, null)
+        testExecutor.flushAll()
+
+        verify(desktopTasksController, never())
+            .moveTaskToDesk(any(), any(), any(), any(), any(), anyOrNull(), anyOrNull(), anyOrNull())
     }
 
     @Test

@@ -339,6 +339,23 @@ final class InputGestureManager {
                         KeyGestureEvent.KEY_GESTURE_TYPE_QUIT_FOCUSED_DESKTOP_TASK,
                         /* allowCaptureByFocusedWindow = */false
                 ));
+        if (mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_keyboardShortcutMovesFocusedWindowToDesk)) {
+            systemShortcuts.add(
+                    createKeyGesture(
+                            KeyEvent.KEYCODE_LEFT_BRACKET,
+                            KeyEvent.META_META_ON | KeyEvent.META_SHIFT_ON,
+                            KeyGestureEvent.KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_PREVIOUS_DESK,
+                            /* allowCaptureByFocusedWindow = */false
+                    ));
+            systemShortcuts.add(
+                    createKeyGesture(
+                            KeyEvent.KEYCODE_RIGHT_BRACKET,
+                            KeyEvent.META_META_ON | KeyEvent.META_SHIFT_ON,
+                            KeyGestureEvent.KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_NEXT_DESK,
+                            /* allowCaptureByFocusedWindow = */false
+                    ));
+        }
         if (enableQuickSettingsPanelShortcut()) {
             systemShortcuts.add(
                     createKeyGesture(
