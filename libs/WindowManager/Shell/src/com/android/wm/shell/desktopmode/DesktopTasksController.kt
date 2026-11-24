@@ -404,6 +404,10 @@ class DesktopTasksController(
             desksOrganizer = desksOrganizer,
         )
 
+    /** See config_restoreTilingOnUnminimize. */
+    private val restoresTilingOnUnminimize =
+        context.resources.getBoolean(R.bool.config_restoreTilingOnUnminimize)
+
     private val emptyDeskKeeper =
         EmptyDeskKeeper(
             isEnabled = context.resources.getBoolean(R.bool.config_keepEmptyDeskActiveShowingHome),
@@ -1912,6 +1916,16 @@ class DesktopTasksController(
         }
     }
 
+    /** Remembers the half a tiled task was snapped to, to tile it back when it is restored. */
+    private fun rememberTiledSideOnMinimize(
+        repository: DesktopRepository,
+        deskId: Int,
+        taskId: Int,
+    ) {
+        if (!restoresTilingOnUnminimize) return
+        repository.rememberTiledSideOnMinimize(deskId, taskId)
+    }
+
     /**
      * Returns the topmost task from the active desk on display [displayId] for user [userId].
      *
@@ -1952,6 +1966,7 @@ class DesktopTasksController(
                 deskId = checkNotNull(deskId) { "Expected non-null deskId" },
                 displayId = displayId,
             )
+        rememberTiledSideOnMinimize(repository, deskId, taskId)
         snapController.removeTaskIfTiled(displayId, taskId)
         val isMinimizingToPip =
             (taskInfo.pictureInPictureParams?.isAutoEnterEnabled ?: false) &&

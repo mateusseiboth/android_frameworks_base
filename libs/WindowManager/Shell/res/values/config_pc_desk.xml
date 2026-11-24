@@ -35,4 +35,8 @@
     <!-- Whether, on a desktop-first display that shows Home behind the desktop, the desk stays
          active and empty when its last window closes, so the next app opens as a window. -->
     <bool name="config_keepEmptyDeskActiveShowingHome">false</bool>
+
+    <!-- Whether restoring a minimized window that was snapped to half of the screen tiles it back
+         into that half, while no other window took it. -->
+    <bool name="config_restoreTilingOnUnminimize">false</bool>
 </resources>

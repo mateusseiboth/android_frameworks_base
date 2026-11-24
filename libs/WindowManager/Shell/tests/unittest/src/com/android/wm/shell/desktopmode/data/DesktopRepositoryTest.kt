@@ -1314,6 +1314,45 @@ class DesktopRepositoryTest : ShellTestCase() {
     }
 
     @Test
+    fun rememberTiledSideOnMinimize_leftTiledTask_restoresLeftOnce() {
+        repo.addDesk(DEFAULT_DISPLAY, deskId = 2)
+        repo.addTaskToDesk(
+            DEFAULT_DISPLAY,
+            deskId = 2,
+            taskId = 5,
+            isVisible = true,
+            TEST_TASK_BOUNDS,
+        )
+        repo.addLeftTiledTaskToDesk(DEFAULT_DISPLAY, taskId = 5, deskId = 2)
+
+        repo.rememberTiledSideOnMinimize(deskId = 2, taskId = 5)
+        repo.removeLeftTiledTaskFromDesk(DEFAULT_DISPLAY, deskId = 2)
+
+        assertThat(repo.takeTiledSideToRestore(deskId = 2, taskId = 5))
+            .isEqualTo(MinimizedTiledTasks.TiledSide.LEFT)
+        assertThat(repo.takeTiledSideToRestore(deskId = 2, taskId = 5)).isNull()
+    }
+
+    @Test
+    fun rememberTiledSideOnMinimize_taskRemoved_nothingToRestore() {
+        repo.addDesk(DEFAULT_DISPLAY, deskId = 2)
+        repo.addTaskToDesk(
+            DEFAULT_DISPLAY,
+            deskId = 2,
+            taskId = 5,
+            isVisible = true,
+            TEST_TASK_BOUNDS,
+        )
+        repo.addRightTiledTaskToDesk(DEFAULT_DISPLAY, taskId = 5, deskId = 2)
+        repo.rememberTiledSideOnMinimize(deskId = 2, taskId = 5)
+        repo.removeRightTiledTaskFromDesk(DEFAULT_DISPLAY, deskId = 2)
+
+        repo.removeTaskFromDesk(deskId = 2, taskId = 5)
+
+        assertThat(repo.takeTiledSideToRestore(deskId = 2, taskId = 5)).isNull()
+    }
+
+    @Test
     fun removeTask_updatesTaskVisibility() {
         repo.addDesk(displayId = THIRD_DISPLAY, deskId = THIRD_DISPLAY)
         val taskId = 1

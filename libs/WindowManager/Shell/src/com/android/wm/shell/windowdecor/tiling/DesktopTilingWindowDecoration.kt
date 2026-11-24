@@ -56,8 +56,10 @@ import com.android.wm.shell.desktopmode.DesktopTasksController.SnapPosition
 import com.android.wm.shell.desktopmode.DesktopUserRepositories
 import com.android.wm.shell.desktopmode.ReturnToDragStartAnimator
 import com.android.wm.shell.desktopmode.ToggleResizeDesktopTaskTransitionHandler
+import com.android.wm.shell.desktopmode.data.MinimizedTiledTasks.TiledSide
 import com.android.wm.shell.protolog.ShellProtoLogGroup.WM_SHELL_DESKTOP_MODE
 import com.android.wm.shell.shared.FocusTransitionListener
+import com.android.wm.shell.shared.TransitionUtil
 import com.android.wm.shell.shared.annotations.ShellBackgroundThread
 import com.android.wm.shell.shared.annotations.ShellMainThread
 import com.android.wm.shell.shared.annotations.ShellMainThreadImmediate
@@ -148,6 +150,9 @@ class DesktopTilingWindowDecoration(
 
     var leftTaskResizingHelper: AppResizingHelper? = null
     var rightTaskResizingHelper: AppResizingHelper? = null
+
+    /** Tiles a restored window back into its half, see config_restoreTilingOnUnminimize. */
+    var tilingRestoreListener: TilingRestoreListener? = null
 
     var explodedViewTopTaskId: Int? = null
     @VisibleForTesting var isTilingManagerInitialised = false
@@ -518,6 +523,7 @@ class DesktopTilingWindowDecoration(
         }
         for (change in info.changes) {
             change.taskInfo?.let { taskInfo ->
+                handleMinimizedTilingIfNeeded(change, taskInfo, info.type)
                 when {
                     taskInfo.isFullscreen || isMinimized(change.mode, info.type) ->
                         removeTaskIfTiled(
@@ -584,6 +590,43 @@ class DesktopTilingWindowDecoration(
         } else if (taskId == rightTaskResizingHelper?.taskInfo?.taskId) {
             rightTaskResizingHelper?.onAppBecomingVisible()
         }
+    }
+
+    /**
+     * Remembers the half of a tiled window being minimized, and tiles a restored window back into
+     * the half it was minimized from while that half is free.
+     */
+    private fun handleMinimizedTilingIfNeeded(
+        change: Change,
+        taskInfo: RunningTaskInfo,
+        infoType: Int,
+    ) {
+        if (context.resources?.getBoolean(R.bool.config_restoreTilingOnUnminimize) != true) return
+        val repository = desktopUserRepositories.current
+        when {
+            isMinimized(change.mode, infoType) ->
+                repository.rememberTiledSideOnMinimize(deskId, taskInfo.taskId)
+            isRestoredInDesk(change, taskInfo) -> requestTilingRestore(taskInfo)
+        }
+    }
+
+    private fun isRestoredInDesk(change: Change, taskInfo: RunningTaskInfo): Boolean =
+        TransitionUtil.isOpeningMode(change.mode) &&
+            taskInfo.isFreeform &&
+            desktopUserRepositories.current.getDeskIdForTask(taskInfo.taskId) == deskId
+
+    private fun requestTilingRestore(taskInfo: RunningTaskInfo) {
+        val side =
+            desktopUserRepositories.current.takeTiledSideToRestore(deskId, taskInfo.taskId)
+                ?: return
+        val position =
+            when (side) {
+                TiledSide.LEFT -> SnapPosition.LEFT
+                TiledSide.RIGHT -> SnapPosition.RIGHT
+            }
+        logD("Tiling restored taskId=%d back to the %s", taskInfo.taskId, position.toString())
+        // Tile once this transition is handled, the snap may start a transition of its own.
+        mainExecutor.execute { tilingRestoreListener?.onTilingRestoreRequested(taskInfo, position) }
     }
 
     private fun isMinimized(changeMode: Int, infoType: Int): Boolean =

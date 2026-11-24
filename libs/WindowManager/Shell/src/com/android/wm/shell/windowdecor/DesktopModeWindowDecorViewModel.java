@@ -544,6 +544,7 @@ public class DesktopModeWindowDecorViewModel implements WindowDecorViewModel,
         mTaskResourceLoader = taskResourceLoader;
         mDesktopModeCompatPolicy = desktopModeCompatPolicy;
         mDesktopTilingDecorViewModel = desktopTilingDecorViewModel;
+        mDesktopTilingDecorViewModel.setTilingRestoreListener(this::restoreTiling);
         // TODO(b/467367552): Remove handling dependency in Dagger.
         snapController.start(this);
         mMultiDisplayDragMoveIndicatorController = multiDisplayDragMoveIndicatorController;
@@ -1136,6 +1137,16 @@ public class DesktopModeWindowDecorViewModel implements WindowDecorViewModel,
     @Override
     public @NonNull Rect getDividerBounds(int deskId) {
         return mDesktopTilingDecorViewModel.getDividerBounds(deskId);
+    }
+
+    /** Tiles a restored window back into the half it was minimized from. */
+    private void restoreTiling(@NonNull RunningTaskInfo taskInfo, @NonNull SnapPosition position) {
+        final WindowDecorationWrapper decor = mWindowDecorByTaskId.get(taskInfo.taskId);
+        if (decor == null) return;
+        final RunningTaskInfo decorTaskInfo = decor.getTaskInfo();
+        final Rect currentBounds = decorTaskInfo.configuration.windowConfiguration.getBounds();
+        mDesktopTilingDecorViewModel.snapToHalfScreen(decorTaskInfo, decor, position,
+                currentBounds, null);
     }
 
     @Override

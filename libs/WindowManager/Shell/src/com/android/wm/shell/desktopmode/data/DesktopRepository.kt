@@ -92,6 +92,9 @@ class DesktopRepository(
     /* Tasks closed by back navigation that stay minimized in their desk. */
     private val backClosedTasks = BackClosedTasks()
 
+    /* Sides that minimized tasks were tiled to, to tile them back when restored. */
+    private val minimizedTiledTasks = MinimizedTiledTasks()
+
     // TODO - b/365873835: Add this to persistent repository.
     private val preservedDisplaysByUniqueId = ArrayMap<String, DesktopDisplay>()
 
@@ -823,6 +826,26 @@ class DesktopRepository(
         }
     }
 
+    /** Remembers the tiled side of [taskId] in [deskId], if it is tiled, as it gets minimized. */
+    fun rememberTiledSideOnMinimize(deskId: Int, taskId: Int) {
+        val desk = desktopData.getDesk(deskId) ?: return
+        minimizedTiledTasks.onMinimized(taskId, desk.leftTiledTaskId, desk.rightTiledTaskId)
+    }
+
+    /**
+     * Returns, once, the side [taskId] was tiled to before it got minimized, to tile it back as it
+     * is restored in [deskId]; null when it was not tiled or that side is taken.
+     */
+    fun takeTiledSideToRestore(deskId: Int, taskId: Int): MinimizedTiledTasks.TiledSide? {
+        if (!minimizedTiledTasks.contains(taskId)) return null
+        val desk = desktopData.getDesk(deskId) ?: return null
+        return minimizedTiledTasks.takeSideToRestore(
+            taskId,
+            desk.leftTiledTaskId,
+            desk.rightTiledTaskId,
+        )
+    }
+
     /** Returns the tasks inside the given desk. */
     fun getActiveTaskIdsInDesk(deskId: Int): Set<Int> =
         desktopData.getDesk(deskId)?.activeTasks?.toSet()
@@ -1144,6 +1167,7 @@ class DesktopRepository(
     /** Removes the given task from the given desk. */
     fun removeTaskFromDesk(deskId: Int, taskId: Int) {
         logD("removeTaskFromDesk: deskId=%d, taskId=%d", deskId, taskId)
+        minimizedTiledTasks.remove(taskId)
         // TODO: b/362720497 - consider not clearing bounds on any removal, such as when moving
         //  it between desks. It might be better to allow restoring to the previous bounds as long
         //  as they're valid (probably valid if in the same display).
@@ -1375,6 +1399,7 @@ class DesktopRepository(
         pw.println("${innerPrefix}activeTasksListeners=${activeTasksListeners.size}")
         pw.println("${innerPrefix}visibleTasksListeners=${visibleTasksListeners.size}")
         pw.println("${innerPrefix}backClosedTasks=$backClosedTasks")
+        pw.println("${innerPrefix}minimizedTiledTasks=$minimizedTiledTasks")
         if (Flags.enableRememberedBounds()) {
             pw.println("${innerPrefix}rememberedBoundsRatioByPackageName:")
             rememberedBoundsRatioByPackageName.forEach { (packageName, bounds) ->
