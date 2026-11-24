@@ -31,4 +31,8 @@
     <!-- Whether the desktop windows come back in the stacking order they had when the desktop
          was left (Home, Overview, a fullscreen app) once it is entered again. -->
     <bool name="config_preserveDesktopZOrderOnExit">false</bool>
+
+    <!-- Whether, on a desktop-first display that shows Home behind the desktop, the desk stays
+         active and empty when its last window closes, so the next app opens as a window. -->
+    <bool name="config_keepEmptyDeskActiveShowingHome">false</bool>
 </resources>

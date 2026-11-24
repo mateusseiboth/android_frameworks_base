@@ -4120,6 +4120,38 @@ class DesktopTasksControllerTest : ShellTestCase() {
     }
 
     @Test
+    fun onDesktopWindowClose_lastWindow_desktopFirst_keepEmptyDeskShowingHome_keepsDesk() {
+        mContext
+            .getOrCreateTestableResources()
+            .addOverride(R.bool.config_keepEmptyDeskActiveShowingHome, true)
+        desktopState.shouldShowHomeBehindDesktop = true
+        controller = createController()
+        rootTaskDisplayAreaOrganizer.setDesktopFirst(DEFAULT_DISPLAY)
+        val task = setUpFreeformTask()
+        val wct = WindowContainerTransaction()
+
+        controller.onDesktopWindowClose(wct, displayId = DEFAULT_DISPLAY, task)
+
+        verify(desksOrganizer, never()).deactivateDesk(wct, deskId = 0)
+    }
+
+    @Test
+    fun onDesktopWindowClose_lastWindow_touchFirst_keepEmptyDeskShowingHome_removesDesk() {
+        mContext
+            .getOrCreateTestableResources()
+            .addOverride(R.bool.config_keepEmptyDeskActiveShowingHome, true)
+        desktopState.shouldShowHomeBehindDesktop = true
+        controller = createController()
+        rootTaskDisplayAreaOrganizer.setTouchFirst(DEFAULT_DISPLAY)
+        val task = setUpFreeformTask()
+        val wct = WindowContainerTransaction()
+
+        controller.onDesktopWindowClose(wct, displayId = DEFAULT_DISPLAY, task)
+
+        verify(desksOrganizer).removeDesk(wct, deskId = 0, task.userId)
+    }
+
+    @Test
     fun onDesktopWindowClose_lastWindow_touchFirst_forceKeepDesktop() {
         rootTaskDisplayAreaOrganizer.setTouchFirst(DEFAULT_DISPLAY)
         val task = setUpFreeformTask()

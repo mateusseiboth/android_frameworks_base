@@ -16,6 +16,7 @@
 package com.android.wm.shell.desktopmode.multidesks
 
 import android.app.ActivityTaskManager.INVALID_TASK_ID
+import android.app.WindowConfiguration.ACTIVITY_TYPE_HOME
 import android.graphics.Rect
 import android.os.IBinder
 import android.os.Trace
@@ -61,6 +62,8 @@ class DesksTransitionObserver(
     private val shellController: ShellController,
     private val displayController: DisplayController,
     private val desktopHomeScreenPeekController: DesktopHomeScreenPeekController,
+    /** See config_keepEmptyDeskActiveShowingHome. */
+    private val emptyDeskKeeper: EmptyDeskKeeper = EmptyDeskKeeper.DISABLED,
 ) {
     // Tracks the desk transitions used to keep track of the desk state. This is usually removed
     // when the transition is ready. This map represents what a single shell transition is causing
@@ -501,6 +504,15 @@ class DesksTransitionObserver(
                         logD("desk=%d moved to back but nothing moved to front, skipping", deskId)
                         continue
                     }
+                    if (shouldKeepEmptyDeskBehindHome(info, change, deskChanges, displayId)) {
+                        // An empty desk stays active while Home shows, so the next app opens as
+                        // a window in it. Home is the desktop background here, so putting the
+                        // empty desk back in front still shows Home and leaves it focused.
+                        logD("desk=%d is empty and Home showed, keeping it active", deskId)
+                        desksToActivate.add(deskId)
+                        desksOrganizer.activateDesk(wct, deskId, skipReorder = false)
+                        continue
+                    }
                     if (desksToActivate.contains(deskId)) {
                         // In cases such as back-navigating the last app, where we want to remain
                         // in an empty desk, WM core may forcefully move the desktop wallpaper to
@@ -642,6 +654,23 @@ class DesksTransitionObserver(
 
     private fun TransitionInfo.Change.isOpeningOrToTop(): Boolean =
         TransitionUtil.isOpeningMode(mode) || isToTop()
+
+    private fun shouldKeepEmptyDeskBehindHome(
+        info: TransitionInfo,
+        deskChange: TransitionInfo.Change,
+        deskChanges: List<TransitionInfo.Change>,
+        displayId: Int,
+    ): Boolean {
+        val openingChanges =
+            info.taskChanges().filter { c -> c !in deskChanges && c.isOpeningOrToTop() }
+        return emptyDeskKeeper.shouldKeepWhenHomeShows(
+            displayId = displayId,
+            isDeskEmpty = deskChange.taskInfo?.topActivity == null,
+            isOnlyHomeOpening =
+                openingChanges.isNotEmpty() &&
+                    openingChanges.all { c -> c.taskInfo?.activityType == ACTIVITY_TYPE_HOME },
+        )
+    }
 
     private fun TransitionInfo.taskChanges(): List<TransitionInfo.Change> =
         changes.filter { c ->

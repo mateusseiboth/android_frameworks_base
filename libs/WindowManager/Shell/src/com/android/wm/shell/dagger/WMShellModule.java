@@ -154,6 +154,7 @@ import com.android.wm.shell.desktopmode.data.DesktopRepositoryInitializerImpl;
 import com.android.wm.shell.desktopmode.data.persistence.DesktopPersistentRepository;
 import com.android.wm.shell.desktopmode.desktopfirst.DesktopDisplayModeController;
 import com.android.wm.shell.desktopmode.desktopfirst.DesktopFirstListenerManager;
+import com.android.wm.shell.desktopmode.desktopfirst.DesktopFirstUtilsKt;
 import com.android.wm.shell.desktopmode.desktoptaskshandlers.DesktopTasksTransitionHandler;
 import com.android.wm.shell.desktopmode.desktopwallpaperactivity.DesktopWallpaperActivityTokenProvider;
 import com.android.wm.shell.desktopmode.desktopwallpaperactivity.DesktopWallpaperActivityUtils;
@@ -168,6 +169,7 @@ import com.android.wm.shell.desktopmode.multidesks.DeskSwitchTransitionHandler;
 import com.android.wm.shell.desktopmode.multidesks.DesksController;
 import com.android.wm.shell.desktopmode.multidesks.DesksOrganizer;
 import com.android.wm.shell.desktopmode.multidesks.DesksTransitionObserver;
+import com.android.wm.shell.desktopmode.multidesks.EmptyDeskKeeper;
 import com.android.wm.shell.desktopmode.multidesks.RootTaskDesksOrganizer;
 import com.android.wm.shell.draganddrop.DragAndDropController;
 import com.android.wm.shell.draganddrop.GlobalDragListener;
@@ -1709,6 +1711,8 @@ public abstract class WMShellModule {
     @WMSingleton
     @Provides
     static Optional<DesksTransitionObserver> provideDesksTransitionObserver(
+            Context context,
+            RootTaskDisplayAreaOrganizer rootTaskDisplayAreaOrganizer,
             @DynamicOverride DesktopUserRepositories desktopUserRepositories,
             @DynamicOverride DesksOrganizer desksOrganizer,
             @NonNull Transitions transitions,
@@ -1725,7 +1729,13 @@ public abstract class WMShellModule {
                     new DesksTransitionObserver(desktopUserRepositories, desksOrganizer,
                             transitions, desktopWallpaperActivityTokenProvider, mainScope,
                             desktopModeEventLogger, shellController, displayController,
-                            desktopHomeScreenPeekController));
+                            desktopHomeScreenPeekController,
+                            new EmptyDeskKeeper(
+                                    context.getResources().getBoolean(
+                                            R.bool.config_keepEmptyDeskActiveShowingHome),
+                                    desktopState.getShouldShowHomeBehindDesktop(),
+                                    displayId -> DesktopFirstUtilsKt.isDisplayDesktopFirst(
+                                            rootTaskDisplayAreaOrganizer, displayId))));
         }
         return Optional.empty();
     }

@@ -151,6 +151,7 @@ import com.android.wm.shell.desktopmode.multidesks.DeskTransition
 import com.android.wm.shell.desktopmode.multidesks.DesksController
 import com.android.wm.shell.desktopmode.multidesks.DesksOrganizer
 import com.android.wm.shell.desktopmode.multidesks.DesksTransitionObserver
+import com.android.wm.shell.desktopmode.multidesks.EmptyDeskKeeper
 import com.android.wm.shell.desktopmode.multidesks.OnDeskRemovedListener
 import com.android.wm.shell.desktopmode.multidesks.PreserveDisplayRequestHandler
 import com.android.wm.shell.draganddrop.DragAndDropController
@@ -401,6 +402,15 @@ class DesktopTasksController(
         DeskWindowOrderSync(
             isEnabled = context.resources.getBoolean(R.bool.config_preserveDesktopZOrderOnExit),
             desksOrganizer = desksOrganizer,
+        )
+
+    private val emptyDeskKeeper =
+        EmptyDeskKeeper(
+            isEnabled = context.resources.getBoolean(R.bool.config_keepEmptyDeskActiveShowingHome),
+            isHomeBehindDesktop = desktopState.shouldShowHomeBehindDesktop,
+            isDesktopFirst = { displayId ->
+                rootTaskDisplayAreaOrganizer.isDisplayDesktopFirst(displayId)
+            },
         )
 
     init {
@@ -1858,13 +1868,14 @@ class DesktopTasksController(
             return null
         }
         snapController.removeTaskIfTiled(displayId, taskId)
+        val keepsDesk = forceKeepDesktop || emptyDeskKeeper.shouldKeepOnLastWindowClose(displayId)
         val shouldExitDesktop =
             willExitDesktop(
                 triggerTaskId = taskId,
                 displayId = displayId,
                 userId = userId,
                 forceExitDesktop = false,
-            ) && !forceKeepDesktop
+            ) && !keepsDesk
         val desktopExitRunnable =
             if (shouldExitDesktop) {
                 val isLastTask =
