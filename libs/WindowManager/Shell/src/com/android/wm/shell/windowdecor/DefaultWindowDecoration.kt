@@ -226,6 +226,12 @@ constructor(
     val manageWindowsMenuController: ManageWindowsMenuController?
         get() = captionController?.manageWindowsMenuController
 
+    private val fullscreenHeaderRule =
+        FullscreenHeaderRule(
+            isSplitScreenHeaderEnabled =
+                context.resources.getBoolean(R.bool.config_showFullscreenHeaderInSplitScreen)
+        )
+
     private val appTheme = { taskInfo: RunningTaskInfo ->
         decorThemeUtilFactory.create(context).getAppTheme(taskInfo)
     }
@@ -456,15 +462,24 @@ constructor(
         }
 
     /**
-     * Returns `true` if the task is in desktop windowing mode and is currently in fullscreen.
+     * Returns `true` if the task is in desktop windowing mode and is currently in fullscreen, or in
+     * split screen where [fullscreenHeaderRule] gives split-screen tasks the fullscreen header.
      *
      * This is distinct from an app requesting immersive mode while in freeform.
      */
-    private fun isFullscreenDesktop(taskInfo: RunningTaskInfo): Boolean =
+    private fun isFullscreenDesktop(
+        taskInfo: RunningTaskInfo,
+        splitScreenController: SplitScreenController,
+    ): Boolean =
         if (DesktopExperienceFlags.ENABLE_FULLSCREEN_WINDOW_CONTROLS.isTrue()) {
-            taskInfo.configuration.windowConfiguration.getWindowingMode() ==
-                WINDOWING_MODE_FULLSCREEN &&
-                rootTaskDisplayAreaOrganizer.isDisplayDesktopFirst(taskInfo.displayId)
+            fullscreenHeaderRule.hasFullscreenHeader(
+                isDesktopFirstDisplay =
+                    rootTaskDisplayAreaOrganizer.isDisplayDesktopFirst(taskInfo.displayId),
+                isFullscreen =
+                    taskInfo.configuration.windowConfiguration.getWindowingMode() ==
+                        WINDOWING_MODE_FULLSCREEN,
+                isInSplitScreen = splitScreenController.isTaskInSplitScreen(taskInfo.taskId),
+            )
         } else {
             false
         }
@@ -491,7 +506,8 @@ constructor(
                 !shouldCreateCaption -> CaptionController.CaptionType.NO_CAPTION
                 isPinnedLayer -> CaptionController.CaptionType.APP_PINNED
                 taskInfo.isFreeform -> CaptionController.CaptionType.APP_HEADER
-                isFullscreenDesktop(taskInfo) -> CaptionController.CaptionType.FULLSCREEN_HEADER
+                isFullscreenDesktop(taskInfo, splitScreenController) ->
+                    CaptionController.CaptionType.FULLSCREEN_HEADER
                 else -> CaptionController.CaptionType.APP_HANDLE
             }
         val isAppHeader = captionType == CaptionController.CaptionType.APP_HEADER

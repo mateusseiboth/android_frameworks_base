@@ -17,6 +17,7 @@
 package com.android.wm.shell.windowdecor
 
 import android.app.ActivityManager.RunningTaskInfo
+import android.app.WindowConfiguration.WINDOWING_MODE_FREEFORM
 import android.content.res.Resources
 import android.graphics.Rect
 import android.graphics.Region
@@ -27,8 +28,12 @@ import android.testing.TestableLooper
 import android.view.Display.DEFAULT_DISPLAY
 import android.view.InsetsState
 import android.view.WindowInsets.Type.statusBars
+import android.window.DisplayAreaInfo
+import android.window.WindowContainerToken
 import androidx.test.filters.SmallTest
 import com.android.window.flags.Flags
+import com.android.wm.shell.R
+import com.android.wm.shell.RootTaskDisplayAreaOrganizer
 import com.android.wm.shell.ShellTestCase
 import com.android.wm.shell.TestHandler
 import com.android.wm.shell.TestShellExecutor
@@ -36,12 +41,14 @@ import com.android.wm.shell.common.DisplayController
 import com.android.wm.shell.common.DisplayLayout
 import com.android.wm.shell.desktopmode.DesktopTasksController
 import com.android.wm.shell.desktopmode.DesktopTestHelpers.createFullscreenTask
+import com.android.wm.shell.desktopmode.DesktopTestHelpers.createSplitScreenTask
 import com.android.wm.shell.desktopmode.DesktopUserRepositories
 import com.android.wm.shell.shared.desktopmode.FakeDesktopConfig
 import com.android.wm.shell.shared.desktopmode.FakeDesktopState
 import com.android.wm.shell.splitscreen.SplitScreenController
 import com.android.wm.shell.sysui.ShellInit
 import com.android.wm.shell.windowdecor.WindowDecorationTestHelper.addInsetsSource
+import com.android.wm.shell.windowdecor.caption.CaptionController
 import com.android.wm.shell.windowdecor.common.CaptionVisibilityHelper
 import com.android.wm.shell.windowdecor.common.WindowDecorationGestureExclusionTracker
 import com.google.common.truth.Truth.assertThat
@@ -197,7 +204,54 @@ class DefaultWindowDecorationTests : ShellTestCase() {
         assertTrue(relayoutParams.isCaptionVisible)
     }
 
-    private fun setUpWindowDecoration(taskInfo: RunningTaskInfo): DefaultWindowDecoration {
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_FULLSCREEN_WINDOW_CONTROLS)
+    fun captionType_splitScreenTaskOnDesktopFirstDisplay_withSplitHeader_isFullscreenHeader() {
+        mContext.orCreateTestableResources.addOverride(
+            R.bool.config_showFullscreenHeaderInSplitScreen,
+            true,
+        )
+        val task = createSplitScreenTask()
+        whenever(mockSplitScreenController.isTaskInSplitScreen(task.taskId)).thenReturn(true)
+        val decoration = setUpWindowDecoration(task, createDesktopFirstOrganizer(task.displayId))
+
+        val relayoutParams = decoration.getRelayoutParams(task)
+
+        assertThat(relayoutParams.captionType)
+            .isEqualTo(CaptionController.CaptionType.FULLSCREEN_HEADER)
+    }
+
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_FULLSCREEN_WINDOW_CONTROLS)
+    fun captionType_splitScreenTaskOnDesktopFirstDisplay_withoutSplitHeader_isAppHandle() {
+        mContext.orCreateTestableResources.addOverride(
+            R.bool.config_showFullscreenHeaderInSplitScreen,
+            false,
+        )
+        val task = createSplitScreenTask()
+        whenever(mockSplitScreenController.isTaskInSplitScreen(task.taskId)).thenReturn(true)
+        val decoration = setUpWindowDecoration(task, createDesktopFirstOrganizer(task.displayId))
+
+        val relayoutParams = decoration.getRelayoutParams(task)
+
+        assertThat(relayoutParams.captionType)
+            .isEqualTo(CaptionController.CaptionType.APP_HANDLE)
+    }
+
+    private fun createDesktopFirstOrganizer(displayId: Int): RootTaskDisplayAreaOrganizer {
+        val displayAreaInfo =
+            DisplayAreaInfo(mock<WindowContainerToken>(), displayId, /* featureId= */ 0).apply {
+                configuration.windowConfiguration.windowingMode = WINDOWING_MODE_FREEFORM
+            }
+        return mock<RootTaskDisplayAreaOrganizer>().also {
+            whenever(it.getDisplayAreaInfo(displayId)).thenReturn(displayAreaInfo)
+        }
+    }
+
+    private fun setUpWindowDecoration(
+        taskInfo: RunningTaskInfo,
+        rootTaskDisplayAreaOrganizer: RootTaskDisplayAreaOrganizer = mock(),
+    ): DefaultWindowDecoration {
         val wrappedDecoration =
             WindowDecorationTestHelper.createWindowDecoration(
                     context = context,
@@ -215,6 +269,7 @@ class DefaultWindowDecorationTests : ShellTestCase() {
                     windowDecorationActions = mockWindowDecorationActions,
                     captionVisibilityHelper = mockCaptionVisibilityHelper,
                     windowDecorationExclusionTracker = mockWindowDecorationExclusionTracker,
+                    rootTaskDisplayAreaOrganizer = rootTaskDisplayAreaOrganizer,
                 )
                 .also { it.relayout(taskInfo) }
         return wrappedDecoration.defaultWindowDecoration

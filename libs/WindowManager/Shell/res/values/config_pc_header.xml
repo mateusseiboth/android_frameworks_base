@@ -23,4 +23,8 @@
     <!-- Whether the fullscreen header slides down from the top edge when shown and back up when
          hidden, instead of appearing and disappearing at once. -->
     <bool name="config_animateFullscreenHeader">false</bool>
+
+    <!-- Whether split-screen tasks of a desktop-first display get the fullscreen header (app chip,
+         exit and close) like fullscreen tasks, instead of the app handle. -->
+    <bool name="config_showFullscreenHeaderInSplitScreen">false</bool>
 </resources>
