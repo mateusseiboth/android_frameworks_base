@@ -37,4 +37,8 @@
 
     <!-- Width of the categories sidebar in the keyboard shortcut helper dialog. -->
     <dimen name="shortcut_helper_dialog_sidebar_width">280dp</dimen>
+
+    <!-- Tile specs offered in the quick settings edit mode besides quick_settings_tiles_stock,
+         comma separated (for example "ime", the input method tile). -->
+    <string name="config_quickSettingsExtraStockTiles" translatable="false"></string>
 </resources>

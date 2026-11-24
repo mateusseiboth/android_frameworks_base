@@ -34,6 +34,7 @@ import dagger.Module
         [
             ImeSwitcherMenuBinderModule::class,
             ImeSwitcherMenuRepositoryModule::class,
+            ImeTileModule::class,
             InputMethodRepositoryModule::class,
         ]
 )
