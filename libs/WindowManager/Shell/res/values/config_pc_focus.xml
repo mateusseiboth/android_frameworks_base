@@ -25,4 +25,8 @@
          display layout change. Keeps the status bar from staying opaque or transparent by
          mistake. -->
     <bool name="config_desktopScrimTracksTransitions">false</bool>
+
+    <!-- Whether a desktop window gets a new snapshot when it loses focus, so the thumbnails of
+         Alt+Tab and Overview show its current content. -->
+    <bool name="config_desktopSnapshotOnFocusLoss">false</bool>
 </resources>

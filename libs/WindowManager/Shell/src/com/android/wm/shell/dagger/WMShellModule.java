@@ -118,6 +118,7 @@ import com.android.wm.shell.desktopmode.DesktopModeShellCommandHandler;
 import com.android.wm.shell.desktopmode.DesktopModeUiEventLogger;
 import com.android.wm.shell.desktopmode.DesktopRemoteListener;
 import com.android.wm.shell.desktopmode.DesktopTaskChangeListener;
+import com.android.wm.shell.desktopmode.DesktopTaskFocusSnapshotHandler;
 import com.android.wm.shell.desktopmode.DesktopTasksController;
 import com.android.wm.shell.desktopmode.DesktopTasksLimiter;
 import com.android.wm.shell.desktopmode.DesktopTasksTransitionObserver;
@@ -2111,6 +2112,25 @@ public abstract class WMShellModule {
 
     @WMSingleton
     @Provides
+    static Optional<DesktopTaskFocusSnapshotHandler> provideDesktopTaskFocusSnapshotHandler(
+            Context context,
+            FocusTransitionObserver focusTransitionObserver,
+            Optional<DesktopUserRepositories> desktopUserRepositories,
+            TaskSnapshotManager taskSnapshotManager,
+            @ShellMainThread ShellExecutor mainExecutor,
+            @ShellBackgroundThread ShellExecutor bgExecutor,
+            ShellInit shellInit,
+            DesktopState desktopState) {
+        if (!desktopState.canEnterDesktopMode()) {
+            return Optional.empty();
+        }
+        return Optional.of(new DesktopTaskFocusSnapshotHandler(context, focusTransitionObserver,
+                desktopUserRepositories.get(), taskSnapshotManager, mainExecutor, bgExecutor,
+                shellInit));
+    }
+
+    @WMSingleton
+    @Provides
     static VisualIndicatorUpdateScheduler provideVisualIndicatorUpdateScheduler(
             ShellInit shellInit,
             @ShellMainThread MainCoroutineDispatcher mainDispatcher,
@@ -2297,6 +2317,7 @@ public abstract class WMShellModule {
             Optional<SystemModalsTransitionHandler> systemModalsTransitionHandler,
             Optional<DisplayDisconnectTransitionHandler> displayDisconnectTransitionHandler,
             Optional<DesktopImeHandler> desktopImeHandler,
+            Optional<DesktopTaskFocusSnapshotHandler> desktopTaskFocusSnapshotHandler,
             ShellCrashHandler shellCrashHandler,
             AppToWebEducationController appToWebEducationController,
             QuitFocusedAppKeyGestureHandler quitFocusedAppKeyGestureHandler,
