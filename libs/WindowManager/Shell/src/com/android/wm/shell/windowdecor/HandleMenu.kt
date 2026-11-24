@@ -373,14 +373,14 @@ private constructor(
             )
         )
         if (layoutResId == R.layout.desktop_mode_app_header) {
-            // Align the handle menu to the start of the header.
+            // Align the handle menu to the start of the header, below it.
             menuX =
                 if (context.isRtl()) {
                     taskBounds.width() - menuWidth
                 } else {
                     0
                 }
-            menuY = captionY + marginMenuTop
+            menuY = captionY + captionHeight + marginMenuTop
         } else {
             if (DesktopModeFlags.ENABLE_HANDLE_INPUT_FIX.isTrue()) {
                 // In a focused decor, we use global coordinates for handle menu. Therefore we

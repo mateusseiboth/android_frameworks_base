@@ -180,8 +180,8 @@ class HandleMenuTest : ShellTestCase() {
         createTaskInfo(WINDOWING_MODE_FREEFORM, SPLIT_POSITION_UNDEFINED)
         handleMenu = createAndShowHandleMenu(SPLIT_POSITION_UNDEFINED)
         assertTrue(handleMenu.handleMenuViewContainer is AdditionalViewHostViewContainer)
-        // Verify menu is created near top-left of task.
-        val expected = Point(0, MENU_TOP_MARGIN)
+        // Verify menu is created at the start of the task, below its header.
+        val expected = Point(0, CAPTION_HEIGHT + MENU_TOP_MARGIN)
         assertEquals(expected.toPointF(), handleMenu.handleMenuPosition)
     }
 
@@ -420,7 +420,7 @@ class HandleMenuTest : ShellTestCase() {
                     mockDesktopModeUiEventLogger,
                     captionView = captionView,
                     captionWidth = HANDLE_WIDTH,
-                    captionHeight = 50,
+                    captionHeight = CAPTION_HEIGHT,
                     captionX = captionX,
                     captionY = 0,
                     decorThemeUtilFactory = decorThemeUtilFactory,
@@ -447,7 +447,7 @@ class HandleMenuTest : ShellTestCase() {
                     mockDesktopModeUiEventLogger,
                     captionView = captionView,
                     captionWidth = HANDLE_WIDTH,
-                    captionHeight = 50,
+                    captionHeight = CAPTION_HEIGHT,
                     captionX = captionX,
                     captionY = 0,
                     decorThemeUtilFactory = decorThemeUtilFactory,
@@ -473,6 +473,7 @@ class HandleMenuTest : ShellTestCase() {
         private const val MENU_WIDTH = 200
         private const val MENU_HEIGHT = 400
         private const val MENU_TOP_MARGIN = 10
+        private const val CAPTION_HEIGHT = 50
         private const val MENU_PADDING = 20
         private const val MENU_PILL_SPACING_MARGIN = 4
         private const val HANDLE_WIDTH = 80
