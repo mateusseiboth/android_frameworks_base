@@ -190,13 +190,11 @@ constructor(
     val shadeToQsFraction: Flow<Float> = shadeInteractor.qsExpansion.dumpValue("shadeToQsFraction")
 
     /**
-     * TODO(b/412986215) fix and wire in syntheticScroll updates
-     *
      * The amount in px that the notification stack should scroll due to internal expansion. This
      * should only happen when a notification expansion hits the bottom of the screen, so it is
-     * necessary to scroll up to keep expanding the notification.
+     * necessary to scroll up to keep expanding the notification. Collected by the stack when
+     * config_scrollShadeOnBottomNotificationExpand is set.
      */
-    @Suppress("unused")
     @SuppressLint("FlowExposedFromViewModel")
     val syntheticScroll: Flow<Float> =
         interactor.syntheticScroll.dumpWhileCollecting("syntheticScroll")

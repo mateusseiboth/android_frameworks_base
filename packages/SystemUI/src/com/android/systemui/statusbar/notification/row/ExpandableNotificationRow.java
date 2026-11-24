@@ -283,6 +283,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
     private FalsingManager mFalsingManager;
     private ImageView mDismissButton;
     private boolean mIsDismissButtonHovered;
+    private boolean mIsUserExpansionToReveal;
     private boolean mIsDismissButtonReachableByFocus;
     private final Runnable mUpdateDismissButtonRunnable = this::updateDismissButtonVisibility;
     private final ViewTreeObserver.OnGlobalFocusChangeListener mDismissButtonFocusListener =
@@ -3106,6 +3107,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
 
             mHasUserChangedExpansion = true;
             mUserExpanded = userExpanded;
+            mIsUserExpansionToReveal = userExpanded && !wasExpanded;
             onExpansionChanged(true /* userAction */, wasExpanded);
             return;
         }
@@ -3113,6 +3115,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
         final boolean wasExpanded = isExpanded();
         mHasUserChangedExpansion = true;
         mUserExpanded = userExpanded;
+        mIsUserExpansionToReveal = userExpanded && !wasExpanded;
 
 //        setUserSwipingToExpandRow(userExpanded);
 
@@ -3121,6 +3124,16 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
                 && getActualHeight() != getIntrinsicHeight()) {
             notifyHeightChanged(/* needsAnimation= */ true, "ENR.setUserExpanded");
         }
+    }
+
+    /**
+     * Returns, once, whether the user just expanded this row, so that the stack can bring the
+     * expanded row into view on its next height change.
+     */
+    public boolean consumeUserExpansionToReveal() {
+        final boolean isPending = mIsUserExpansionToReveal;
+        mIsUserExpansionToReveal = false;
+        return isPending;
     }
 
     public void resetUserExpansion() {

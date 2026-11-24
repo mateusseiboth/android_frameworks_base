@@ -2450,4 +2450,46 @@ public class NotificationStackScrollLayoutTest extends SysuiTestCase {
 
         assertThat(stringWriter.toString()).isNotEmpty();
     }
+
+    @Test
+    @EnableSceneContainer
+    public void userExpandedRowPastTheBottom_scrollsTheStack_whenConfigured() {
+        mTestableResources.addOverride(R.bool.config_scrollShadeOnBottomNotificationExpand, true);
+        Consumer<Float> syntheticScroll = mock(Consumer.class);
+        NotificationStackScrollLayout stack = createStackForExpandScroll(syntheticScroll);
+
+        stack.onChildHeightChanged(createUserExpandedRow(), /* needsAnimation = */ true, "test");
+
+        verify(syntheticScroll).accept(org.mockito.ArgumentMatchers.floatThat(it -> it > 0f));
+    }
+
+    @Test
+    @EnableSceneContainer
+    public void userExpandedRowPastTheBottom_doesNotScrollTheStack_byDefault() {
+        Consumer<Float> syntheticScroll = mock(Consumer.class);
+        NotificationStackScrollLayout stack = createStackForExpandScroll(syntheticScroll);
+
+        stack.onChildHeightChanged(createUserExpandedRow(), /* needsAnimation = */ true, "test");
+
+        verify(syntheticScroll, never()).accept(any());
+    }
+
+    private NotificationStackScrollLayout createStackForExpandScroll(
+            Consumer<Float> syntheticScroll) {
+        NotificationStackScrollLayout stack = new NotificationStackScrollLayout(getContext(), null);
+        stack.initView(getContext(), mNotificationSwipeHelper, mStackSizeCalculator);
+        stack.setController(mStackScrollLayoutController);
+        stack.setShelf(mNotificationShelf);
+        stack.setSyntheticScrollConsumer(syntheticScroll);
+        mAmbientState.setStackBounds(new YSpace(/* top = */ 100f, /* bottom = */ 1000f));
+        return stack;
+    }
+
+    private ExpandableNotificationRow createUserExpandedRow() {
+        ExpandableNotificationRow row = mock(ExpandableNotificationRow.class);
+        when(row.consumeUserExpansionToReveal()).thenReturn(true);
+        when(row.getTranslationY()).thenReturn(800f);
+        when(row.getIntrinsicHeight()).thenReturn(500);
+        return row;
+    }
 }

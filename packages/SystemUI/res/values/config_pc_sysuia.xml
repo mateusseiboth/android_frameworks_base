@@ -27,4 +27,8 @@
     <!-- Whether the dismiss button of a notification can also be reached by keyboard focus and
          accessibility services, and shows while the focus is on the notification. -->
     <bool name="config_notificationDismissButtonAccessible">false</bool>
+
+    <!-- Whether the notification list scrolls when a notification at its bottom is expanded, so
+         that the expanded notification stays in view. -->
+    <bool name="config_scrollShadeOnBottomNotificationExpand">false</bool>
 </resources>
