@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -64,6 +65,7 @@ import com.android.systemui.common.ui.icons.MoreVert
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.EditModeTopBarDefaults.editModeTopAppBarColors
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.EditModeTopBarDefaults.menuItemColors
 import com.android.systemui.qs.panels.ui.viewmodel.EditTopBarActionViewModel
+import com.android.systemui.qs.ui.compose.materialFocusRing
 import com.android.systemui.res.R
 
 /**
@@ -122,7 +124,7 @@ private fun NavigationArrow(
     containerColor: Color = Color.Transparent,
 ) {
     IconButton(
-        modifier = modifier,
+        modifier = modifier.materialFocusRing(CircleCornerSize),
         onClick = onStopEditing,
         colors =
             IconButtonDefaults.iconButtonColors(
@@ -162,7 +164,7 @@ private fun SingleTopBarAction(
                 containerColor = Color.Transparent,
                 contentColor = MaterialTheme.colorScheme.onSurface,
             ),
-        modifier = modifier,
+        modifier = modifier.materialFocusRing(CircleCornerSize),
     ) {
         Icon(
             editTopBarActionViewModel.icon,
@@ -180,6 +182,7 @@ private fun TopBarActionOverflow(
 
     Box(modifier = modifier) {
         IconButton(
+            modifier = Modifier.materialFocusRing(CircleCornerSize),
             onClick = { showMenu = !showMenu },
             colors =
                 IconButtonDefaults.iconButtonColors(
@@ -236,6 +239,9 @@ private fun DropdownMenuElement(
         modifier = modifier.heightIn(min = 52.dp),
     )
 }
+
+// Icon buttons are round.
+private val CircleCornerSize = CornerSize(percent = 50)
 
 private object EditModeTopBarDefaults {
     @ReadOnlyComposable

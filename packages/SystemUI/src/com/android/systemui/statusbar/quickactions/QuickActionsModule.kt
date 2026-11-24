@@ -16,7 +16,18 @@
 
 package com.android.systemui.statusbar.quickactions
 
+import com.android.systemui.CoreStartable
 import com.android.systemui.statusbar.quickactions.data.QuickActionsDataModule
+import com.android.systemui.statusbar.quickactions.domain.startable.QuickActionsCollapseStartable
+import dagger.Binds
 import dagger.Module
+import dagger.multibindings.ClassKey
+import dagger.multibindings.IntoMap
 
-@Module(includes = [QuickActionsDataModule::class]) public interface QuickActionsModule
+@Module(includes = [QuickActionsDataModule::class])
+public interface QuickActionsModule {
+    @Binds
+    @IntoMap
+    @ClassKey(QuickActionsCollapseStartable::class)
+    public fun bindQuickActionsCollapseStartable(impl: QuickActionsCollapseStartable): CoreStartable
+}

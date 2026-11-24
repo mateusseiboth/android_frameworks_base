@@ -115,4 +115,10 @@ public interface DesktopMode {
 
     /** Called when requested to toggle peek state in desktop mode. */
     void togglePeek(int displayId);
+
+    /**
+     * Called when the pointer hovers the desktop status bar of a display, with its position in
+     * display coordinates, or leaves it ({@code isHovering} false).
+     */
+    default void onStatusBarHoverChanged(int displayId, boolean isHovering, float x, float y) { }
 }

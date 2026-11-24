@@ -18,6 +18,7 @@ package com.android.systemui.statusbar.notification.stack.data.repository
 
 import com.android.systemui.dagger.SysUISingleton
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
@@ -31,8 +32,11 @@ class NotificationViewHeightRepository @Inject constructor() {
      * The amount in px that the notification stack should scroll due to internal expansion. This
      * should only happen when a notification expansion hits the bottom of the screen, so it is
      * necessary to scroll up to keep expanding the notification.
+     *
+     * Each value is one scroll to apply, so equal consecutive amounts all count and none is
+     * replayed to a new collector.
      */
-    val syntheticScroll = MutableStateFlow(0f)
+    val syntheticScroll = MutableSharedFlow<Float>(extraBufferCapacity = SYNTHETIC_SCROLL_BUFFER)
 
     /**
      * Whether the current gesture is expanding a Notification. If true, the NSSL has already
@@ -42,4 +46,8 @@ class NotificationViewHeightRepository @Inject constructor() {
 
     /** Whether the current touch gesture is on any open notification guts. */
     val isCurrentGestureInGuts = MutableStateFlow(false)
+
+    private companion object {
+        const val SYNTHETIC_SCROLL_BUFFER = 64
+    }
 }

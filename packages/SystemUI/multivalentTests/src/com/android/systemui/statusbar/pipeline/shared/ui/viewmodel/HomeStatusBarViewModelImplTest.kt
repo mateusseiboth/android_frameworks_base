@@ -61,10 +61,12 @@ import com.android.systemui.kosmos.runCurrent
 import com.android.systemui.kosmos.runTest
 import com.android.systemui.kosmos.testScope
 import com.android.systemui.kosmos.useUnconfinedTestDispatcher
+import com.android.systemui.launcherProxyService
 import com.android.systemui.lifecycle.activateIn
 import com.android.systemui.mediaprojection.data.model.MediaProjectionState
 import com.android.systemui.mediaprojection.data.repository.fakeMediaProjectionRepository
 import com.android.systemui.plugins.DarkIconDispatcher
+import com.android.systemui.res.R
 import com.android.systemui.scene.data.repository.sceneContainerRepository
 import com.android.systemui.scene.data.repository.setSceneTransition
 import com.android.systemui.scene.domain.interactor.sceneInteractor
@@ -124,6 +126,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.kotlin.verify
 import platform.test.runner.parameterized.ParameterizedAndroidJunit4
 import platform.test.runner.parameterized.Parameters
 
@@ -1387,6 +1390,16 @@ class HomeStatusBarViewModelImplTest(flags: FlagsParameterization) : SysuiTestCa
 
             underTest.onSpacerClicked()
             assertThat(fakeInputMethodRepository.inputMethodPickerShownDisplayId).isNull()
+        }
+
+    @Test
+    fun onSpacerClicked_closesLauncherFloatingViewsOnItsDisplay() =
+        kosmos.runTest {
+            overrideResource(R.bool.config_statusBarTapClosesLauncherPanels, true)
+
+            underTest.onSpacerClicked()
+
+            verify(launcherProxyService).closeLauncherFloatingViews(testableContext.displayId)
         }
 
     @Test

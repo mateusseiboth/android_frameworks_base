@@ -820,13 +820,14 @@ public abstract class WMShellBaseModule {
             TaskStackTransitionObserver taskStackTransitionObserver,
             @ShellMainThread ShellExecutor mainExecutor,
             DesktopState desktopState,
-            DesktopModeCompatPolicy desktopModeCompatPolicy
+            DesktopModeCompatPolicy desktopModeCompatPolicy,
+            FocusTransitionObserver focusTransitionObserver
     ) {
         return Optional.ofNullable(
                 RecentTasksController.create(context, shellInit, shellController,
                         shellCommandHandler, taskStackListener, activityTaskManager,
                         desktopUserRepositories, taskStackTransitionObserver, mainExecutor,
-                        desktopState, desktopModeCompatPolicy));
+                        desktopState, desktopModeCompatPolicy, focusTransitionObserver));
     }
 
     @BindsOptionalOf

@@ -21,8 +21,11 @@ import android.hardware.input.InputManager
 import android.hardware.input.KeyGestureEvent
 import android.platform.test.annotations.Presubmit
 import android.view.KeyEvent
+import android.testing.TestableContext
 import androidx.test.core.app.ApplicationProvider
+import com.android.internal.R
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -187,4 +190,46 @@ class InputGestureManagerTests {
             inputGestureManager.getCustomInputGestures(USER_ID, /* filter= */ null),
         )
     }
+
+    @Test
+    fun moveFocusedTaskToDeskShortcuts_enabled() {
+        val manager = createManagerMovingFocusedWindowToDesk(isEnabled = true)
+
+        assertEquals(
+            KeyGestureEvent.KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_PREVIOUS_DESK,
+            manager.getInputGesture(USER_ID, metaShiftTrigger(KeyEvent.KEYCODE_LEFT_BRACKET))
+                ?.action
+                ?.keyGestureType,
+        )
+        assertEquals(
+            KeyGestureEvent.KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_NEXT_DESK,
+            manager.getInputGesture(USER_ID, metaShiftTrigger(KeyEvent.KEYCODE_RIGHT_BRACKET))
+                ?.action
+                ?.keyGestureType,
+        )
+    }
+
+    @Test
+    fun moveFocusedTaskToDeskShortcuts_disabled() {
+        val manager = createManagerMovingFocusedWindowToDesk(isEnabled = false)
+
+        assertNull(
+            manager.getInputGesture(USER_ID, metaShiftTrigger(KeyEvent.KEYCODE_LEFT_BRACKET))
+        )
+        assertNull(
+            manager.getInputGesture(USER_ID, metaShiftTrigger(KeyEvent.KEYCODE_RIGHT_BRACKET))
+        )
+    }
+
+    private fun createManagerMovingFocusedWindowToDesk(isEnabled: Boolean): InputGestureManager {
+        val context = TestableContext(ApplicationProvider.getApplicationContext())
+        context.orCreateTestableResources.addOverride(
+            R.bool.config_keyboardShortcutMovesFocusedWindowToDesk,
+            isEnabled,
+        )
+        return InputGestureManager(context).apply { init(listOf()) }
+    }
+
+    private fun metaShiftTrigger(keycode: Int) =
+        InputGestureData.createKeyTrigger(keycode, KeyEvent.META_META_ON or KeyEvent.META_SHIFT_ON)
 }

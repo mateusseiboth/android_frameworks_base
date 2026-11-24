@@ -24,6 +24,7 @@ import com.android.systemui.volume.Events
 import com.android.systemui.volume.dialog.dagger.scope.VolumeDialog
 import com.android.systemui.volume.dialog.dagger.scope.VolumeDialogScope
 import com.android.systemui.volume.dialog.domain.interactor.ExpandedAudioTileDetailsFeatureInteractor
+import com.android.systemui.volume.dialog.domain.interactor.VolumeDialogHorizontalButtonsInteractor
 import com.android.systemui.volume.dialog.domain.interactor.VolumeDialogVisibilityInteractor
 import com.android.systemui.volume.dialog.shared.model.VolumeDialogVisibilityModel
 import com.android.systemui.volume.panel.domain.interactor.VolumePanelGlobalStateInteractor
@@ -45,13 +46,15 @@ constructor(
     private val visibilityInteractor: VolumeDialogVisibilityInteractor,
     private val shadeInteractor: ShadeInteractor,
     private val expandedAudioTileDetailsFeatureInteractor: ExpandedAudioTileDetailsFeatureInteractor,
+    private val horizontalButtonsInteractor: VolumeDialogHorizontalButtonsInteractor,
 ) {
 
     val isVisible: StateFlow<Boolean> =
         visibilityInteractor.dialogVisibility
             .filterIsInstance(VolumeDialogVisibilityModel.Visible::class)
             .map { model ->
-                deviceProvisionedController.isCurrentUserSetup() &&
+                !horizontalButtonsInteractor.isWithoutButtons &&
+                    deviceProvisionedController.isCurrentUserSetup() &&
                     model.lockTaskModeState == ActivityManager.LOCK_TASK_MODE_NONE
             }
             .flowName("VDSBI#isVisible")

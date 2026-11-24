@@ -30,6 +30,7 @@ import com.android.systemui.shared.system.QuickStepContract;
 
 import java.io.PrintWriter;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -46,6 +47,9 @@ import javax.inject.Inject;
 public class SystemUIDialogManager implements Dumpable {
     private static final StateChange SYSUI_STATE_DIALOG_SHOWING_FLAG = new StateChange().setFlag(
             QuickStepContract.SYSUI_STATE_DIALOG_SHOWING, /* state= */ true);
+    private static final StateChange SYSUI_STATE_DIALOG_STASH_TASKBAR_FLAG =
+            new StateChange().setFlag(
+                    QuickStepContract.SYSUI_STATE_DIALOG_STASH_TASKBAR, /* state= */ true);
 
     private final KeyguardViewController mKeyguardViewController;
     private final SysUIStateDisplaysInteractor mSysUIStateDisplaysInteractor;
@@ -118,6 +122,22 @@ public class SystemUIDialogManager implements Dumpable {
                 .collect(Collectors.toSet());
         mSysUIStateDisplaysInteractor.setFlagsExclusivelyToDisplays(displaysWithDialog,
                 SYSUI_STATE_DIALOG_SHOWING_FLAG);
+        setDialogStashTaskbarFlagToDisplays();
+    }
+
+    private void setDialogStashTaskbarFlagToDisplays() {
+        List<DialogTaskbarStash.ShowingDialog> dialogs = mDialogsShowing.stream()
+                .map(d -> new DialogTaskbarStash.ShowingDialog(
+                        d.getContext().getDisplayId(), asksToStashTaskbar(d)))
+                .collect(Collectors.toList());
+        mSysUIStateDisplaysInteractor.setFlagsExclusivelyToDisplays(
+                DialogTaskbarStash.displaysToStash(dialogs), SYSUI_STATE_DIALOG_STASH_TASKBAR_FLAG);
+    }
+
+    /** Dialogs other than {@link SystemUIDialog} have no delegate to ask, so they stash. */
+    private static boolean asksToStashTaskbar(Dialog dialog) {
+        if (!(dialog instanceof SystemUIDialog systemUIDialog)) return true;
+        return systemUIDialog.shouldStashTaskbar();
     }
 
     private void updateDialogListeners() {

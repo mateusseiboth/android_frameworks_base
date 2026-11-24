@@ -55,6 +55,7 @@ import com.android.wm.shell.transition.FocusTransitionObserver
 import com.android.wm.shell.windowdecor.MaximizeButtonView
 import com.android.wm.shell.windowdecor.WindowDecorLinearLayout
 import com.android.wm.shell.windowdecor.WindowDecorationActions
+import com.android.wm.shell.windowdecor.caption.OccludingElement
 import com.android.wm.shell.windowdecor.common.DecorThemeUtil
 import com.android.wm.shell.windowdecor.common.OPACITY_100
 import com.android.wm.shell.windowdecor.common.OPACITY_55
@@ -87,6 +88,8 @@ class FullscreenHeaderViewHolder(
         val hasGlobalFocus: Boolean,
         val enableMaximizeLongClick: Boolean,
         val isCaptionVisible: Boolean,
+        /** Whether the app draws its own caption under a transparent header. */
+        val isCustomHeader: Boolean = false,
     ) : Data()
 
     private val decorThemeUtil = DecorThemeUtil(context)
@@ -112,6 +115,11 @@ class FullscreenHeaderViewHolder(
     private val appIconImageView: ImageView = rootView.requireViewById(R.id.application_icon)
     private val expandMenuErrorImageView: ImageView =
         rootView.requireViewById(R.id.expand_menu_error)
+    private val captionSlideAnimator =
+        FullscreenHeaderSlideAnimator(
+            captionView,
+            isAnimated = context.resources.getBoolean(R.bool.config_animateFullscreenHeader),
+        )
 
     /** The width of the exit fullscreen button view. */
     val exitFullscreenButtonWidth: Int
@@ -381,8 +389,24 @@ class FullscreenHeaderViewHolder(
     }
 
     override fun bindData(data: HeaderData) {
-        bindData(data.taskInfo, data.hasGlobalFocus, data.isCaptionVisible)
+        bindData(data.taskInfo, data.hasGlobalFocus, data.isCaptionVisible, data.isCustomHeader)
     }
+
+    /**
+     * The parts of the header that cover a custom caption: the app chip at the start and the
+     * window controls at the end. The app draws in the space between them.
+     */
+    fun getOccludingElements(): List<OccludingElement> =
+        listOf(
+            OccludingElement(
+                width = dimensions.customizableRegionMarginStart,
+                alignment = OccludingElement.Alignment.START,
+            ),
+            OccludingElement(
+                width = dimensions.customizableRegionMarginEnd,
+                alignment = OccludingElement.Alignment.END,
+            ),
+        )
 
     /** Announces app window name as "focused" via Talkback */
     fun a11yAnnounceFocused() {
@@ -419,9 +443,10 @@ class FullscreenHeaderViewHolder(
         taskInfo: RunningTaskInfo,
         hasGlobalFocus: Boolean,
         isCaptionVisible: Boolean,
+        isCustomHeader: Boolean,
     ) {
         currentTaskInfo = taskInfo
-        val header = fillHeaderInfo(taskInfo, hasGlobalFocus)
+        val header = fillHeaderInfo(taskInfo, hasGlobalFocus, isCustomHeader)
         val headerStyle = getHeaderStyle(header)
 
         if (DesktopModeFlags.ENABLE_DESKTOP_APP_HANDLE_ANIMATION.isTrue()) {
@@ -509,8 +534,7 @@ class FullscreenHeaderViewHolder(
     }
 
     private fun setCaptionVisibility(visible: Boolean) {
-        val v = if (visible) View.VISIBLE else View.GONE
-        captionView.visibility = v
+        captionSlideAnimator.setVisible(visible)
     }
 
     override fun onHandleMenuOpened() {}
@@ -569,6 +593,7 @@ class FullscreenHeaderViewHolder(
     }
 
     private fun getHeaderBackground(header: Header): HeaderStyle.Background {
+        if (header.isCustom) return HeaderStyle.Background.Transparent
         return when (header.appTheme) {
             Theme.LIGHT -> {
                 if (header.isFocused) {
@@ -588,6 +613,7 @@ class FullscreenHeaderViewHolder(
     }
 
     private fun getHeaderForeground(header: Header): HeaderStyle.Foreground {
+        if (header.isCustom) return getCustomHeaderForeground(header)
         return when (header.appTheme) {
             Theme.LIGHT -> {
                 if (header.isFocused) {
@@ -618,11 +644,35 @@ class FullscreenHeaderViewHolder(
         }
     }
 
-    private fun fillHeaderInfo(taskInfo: RunningTaskInfo, hasGlobalFocus: Boolean): Header {
+    /** Over a custom caption the controls follow the caption bar appearance the app asks for. */
+    private fun getCustomHeaderForeground(header: Header): HeaderStyle.Foreground =
+        when {
+            header.isAppearanceCaptionLight && header.isFocused ->
+                HeaderStyle.Foreground(
+                    color = lightColors.onSecondaryContainer.toArgb(),
+                    opacity = OPACITY_100,
+                )
+            header.isAppearanceCaptionLight ->
+                HeaderStyle.Foreground(
+                    color = lightColors.onSecondaryContainer.toArgb(),
+                    opacity = OPACITY_65,
+                )
+            header.isFocused ->
+                HeaderStyle.Foreground(color = darkColors.onSurface.toArgb(), opacity = OPACITY_100)
+            else ->
+                HeaderStyle.Foreground(color = darkColors.onSurface.toArgb(), opacity = OPACITY_55)
+        }
+
+    private fun fillHeaderInfo(
+        taskInfo: RunningTaskInfo,
+        hasGlobalFocus: Boolean,
+        isCustomHeader: Boolean,
+    ): Header {
         return Header(
             appTheme = decorThemeUtil.getAppTheme(taskInfo),
             isFocused = hasGlobalFocus,
             isAppearanceCaptionLight = taskInfo.isLightCaptionBarAppearance,
+            isCustom = isCustomHeader,
         )
     }
 
@@ -630,6 +680,7 @@ class FullscreenHeaderViewHolder(
         val appTheme: Theme,
         val isFocused: Boolean,
         val isAppearanceCaptionLight: Boolean,
+        val isCustom: Boolean,
     )
 
     private data class HeaderStyle(val background: Background, val foreground: Foreground) {
@@ -649,6 +700,7 @@ class FullscreenHeaderViewHolder(
     override fun close() {
         // Should not fire long press events after closing the window decoration.
         exitFullscreenWindowButton.cancelLongPress()
+        captionSlideAnimator.cancel()
     }
 
     @OptIn(ExperimentalStdlibApi::class)

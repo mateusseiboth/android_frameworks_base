@@ -75,6 +75,7 @@ import com.android.systemui.statusbar.phone.domain.interactor.DarkIconInteractor
 import com.android.systemui.statusbar.phone.domain.interactor.IsAreaDark
 import com.android.systemui.statusbar.phone.domain.interactor.LightsOutInteractor
 import com.android.systemui.statusbar.pipeline.battery.ui.viewmodel.BatteryViewModel
+import com.android.systemui.statusbar.pipeline.shared.domain.interactor.DesktopStatusBarPointerInteractor
 import com.android.systemui.statusbar.pipeline.shared.domain.interactor.HomeStatusBarIconBlockListInteractor
 import com.android.systemui.statusbar.pipeline.shared.domain.interactor.HomeStatusBarInteractor
 import com.android.systemui.statusbar.pipeline.shared.domain.interactor.StatusBarVisibilityInteractor
@@ -178,6 +179,12 @@ interface HomeStatusBarViewModel : Activatable {
 
     /** Notifies that the status bar's blank space was clicked. */
     fun onSpacerClicked()
+
+    /**
+     * Notifies where a mouse hovers the status bar, in display coordinates, or that it left the
+     * status bar ([isHovering] false).
+     */
+    fun onStatusBarHoverChanged(x: Float, y: Float, isHovering: Boolean) {}
 
     /** Notifies that the system icons container was clicked. */
     fun onQuickSettingsChipClicked()
@@ -316,6 +323,7 @@ constructor(
     private val scrollToTopInteractor: ScrollToTopInteractor,
     private val headsUpNotificationInteractor: HeadsUpNotificationInteractor,
     private val calendarPopupInteractor: CalendarPopupInteractor,
+    private val desktopStatusBarPointerInteractor: DesktopStatusBarPointerInteractor,
 ) : HomeStatusBarViewModel, HydratedActivatable(enableEnqueuedActivations = true) {
 
     val logger = loggerFactory.getOrCreate(logBufferName(thisDisplayId), 60)
@@ -520,6 +528,11 @@ constructor(
         // TODO: b/478352392 - Consider achieving the same effect by hiding InputMethodPicker upon
         // "out-of-bounds click" instead, via SceneContainerViewModel.onEmptySpaceMotionEvent().
         imeIndicatorChipInteractor.hideInputMethodPicker(thisDisplayId)
+        desktopStatusBarPointerInteractor.onEmptyAreaTapped(thisDisplayId)
+    }
+
+    override fun onStatusBarHoverChanged(x: Float, y: Float, isHovering: Boolean) {
+        desktopStatusBarPointerInteractor.onHoverChanged(thisDisplayId, x, y, isHovering)
     }
 
     override fun onStatusBarLongPressed() {

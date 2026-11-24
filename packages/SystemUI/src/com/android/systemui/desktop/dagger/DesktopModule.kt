@@ -23,7 +23,7 @@ import com.android.wm.shell.shared.desktopmode.DesktopState
 import dagger.Module
 import dagger.Provides
 
-@Module
+@Module(includes = [DesktopHeadsUpModule::class])
 class DesktopModule {
     @Provides
     @SysUISingleton

@@ -26,6 +26,7 @@ import android.view.MotionEvent
 import android.view.SurfaceControl
 import android.view.WindowManager.TRANSIT_CHANGE
 import android.view.WindowManager.TRANSIT_PIP
+import android.view.WindowManager.TRANSIT_TO_BACK
 import android.view.WindowManager.TRANSIT_TO_FRONT
 import android.window.TransitionInfo
 import android.window.TransitionInfo.Change
@@ -50,11 +51,13 @@ import com.android.wm.shell.desktopmode.DesktopUserRepositories
 import com.android.wm.shell.desktopmode.ReturnToDragStartAnimator
 import com.android.wm.shell.desktopmode.ToggleResizeDesktopTaskTransitionHandler
 import com.android.wm.shell.desktopmode.data.DesktopRepository
+import com.android.wm.shell.desktopmode.data.MinimizedTiledTasks
 import com.android.wm.shell.shared.desktopmode.FakeDesktopState
 import com.android.wm.shell.sysui.ShellController
 import com.android.wm.shell.transition.FocusTransitionObserver
 import com.android.wm.shell.transition.Transitions
 import com.android.wm.shell.transition.Transitions.TRANSIT_END_RECENTS_TRANSITION
+import com.android.wm.shell.transition.Transitions.TRANSIT_MINIMIZE
 import com.android.wm.shell.transition.Transitions.TRANSIT_START_RECENTS_TRANSITION
 import com.android.wm.shell.windowdecor.DragResizeWindowGeometry
 import com.android.wm.shell.windowdecor.WindowDecorationWrapper
@@ -70,6 +73,7 @@ import org.mockito.ArgumentCaptor
 import org.mockito.Captor
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.capture
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
@@ -1156,6 +1160,72 @@ class DesktopTilingWindowDecorationTest : ShellTestCase() {
         runnableCaptor.value.run()
 
         assertThat(tilingDecoration.isLaunchInProgress).isFalse()
+    }
+
+    @Test
+    fun onTransitionReady_restoredMinimizedTiledTask_requestsTilingRestore() {
+        val task = createVisibleTask()
+        val listener = mock<TilingRestoreListener>()
+        tilingDecoration.tilingRestoreListener = listener
+        whenever(context.resources).thenReturn(resources)
+        whenever(resources.getBoolean(R.bool.config_restoreTilingOnUnminimize)).thenReturn(true)
+        whenever(desktopRepository.getDeskIdForTask(task.taskId)).thenReturn(deskId)
+        whenever(desktopRepository.takeTiledSideToRestore(deskId, task.taskId))
+            .thenReturn(MinimizedTiledTasks.TiledSide.LEFT)
+
+        tilingDecoration.onTransitionReady(
+            mock(),
+            createTransitFrontTransition(task, task2 = null),
+            mock(),
+            mock(),
+        )
+        val runnableCaptor = ArgumentCaptor.forClass(Runnable::class.java)
+        verify(mainExecutor, atLeastOnce()).execute(runnableCaptor.capture())
+        runnableCaptor.allValues.forEach { it.run() }
+
+        verify(listener).onTilingRestoreRequested(task, DesktopTasksController.SnapPosition.LEFT)
+    }
+
+    @Test
+    fun onTransitionReady_minimizingTask_restoreTilingOn_remembersTiledSide() {
+        val task = createVisibleTask()
+        whenever(context.resources).thenReturn(resources)
+        whenever(resources.getBoolean(R.bool.config_restoreTilingOnUnminimize)).thenReturn(true)
+
+        tilingDecoration.onTransitionReady(
+            mock(),
+            TransitionInfo(TRANSIT_MINIMIZE, /* flags= */ 0).apply {
+                addChange(
+                    Change(mock(), mock()).apply {
+                        mode = TRANSIT_TO_BACK
+                        parent = null
+                        taskInfo = task
+                    }
+                )
+            },
+            mock(),
+            mock(),
+        )
+
+        verify(desktopRepository).rememberTiledSideOnMinimize(deskId, task.taskId)
+    }
+
+    @Test
+    fun onTransitionReady_restoredTask_restoreTilingOff_noTilingRestore() {
+        val task = createVisibleTask()
+        val listener = mock<TilingRestoreListener>()
+        tilingDecoration.tilingRestoreListener = listener
+        whenever(context.resources).thenReturn(resources)
+        whenever(resources.getBoolean(R.bool.config_restoreTilingOnUnminimize)).thenReturn(false)
+
+        tilingDecoration.onTransitionReady(
+            mock(),
+            createTransitFrontTransition(task, task2 = null),
+            mock(),
+            mock(),
+        )
+
+        verify(desktopRepository, never()).takeTiledSideToRestore(any(), any())
     }
 
     private fun initTiledTaskHelperMock(taskInfo: RunningTaskInfo) {

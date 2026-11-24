@@ -157,6 +157,27 @@ class DesktopImmersiveControllerTest : ShellTestCase() {
     }
 
     @Test
+    fun enterImmersive_fullImmersiveDisabled_doesNotStartTransition() {
+        val task = createFreeformTask()
+        val disabledController =
+            DesktopImmersiveController(
+                shellInit = mock(),
+                transitions = mockTransitions,
+                desktopUserRepositories = userRepositories,
+                displayController = mockDisplayController,
+                shellTaskOrganizer = mockShellTaskOrganizer,
+                shellCommandHandler = mock(),
+                transactionSupplier = transactionSupplier,
+                fullImmersivePolicy = DesktopFullImmersivePolicy(isFullImmersiveDisabled = true),
+            )
+
+        disabledController.moveTaskToImmersive(task)
+
+        verify(mockTransitions, never()).startTransition(any(), any(), any())
+        assertThat(desktopRepository.isTaskInFullImmersiveState(task.taskId)).isFalse()
+    }
+
+    @Test
     fun enterImmersive_savesPreImmersiveBounds() {
         val task = createFreeformTask()
         val mockBinder = mock(IBinder::class.java)

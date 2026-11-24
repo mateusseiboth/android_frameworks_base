@@ -98,6 +98,7 @@ import com.android.wm.shell.shared.desktopmode.FakeDesktopState;
 import com.android.wm.shell.sysui.ShellCommandHandler;
 import com.android.wm.shell.sysui.ShellController;
 import com.android.wm.shell.sysui.ShellInit;
+import com.android.wm.shell.transition.FocusTransitionObserver;
 import com.android.wm.shell.transition.HomeTransitionObserver;
 import com.android.wm.shell.transition.TransitionLeashManager;
 import com.android.wm.shell.transition.Transitions;
@@ -203,7 +204,8 @@ public class RecentsTransitionHandlerTest extends ShellTestCase {
         mRecentTasksControllerReal = new RecentTasksController(mContext, mShellInit,
                 mShellController, mShellCommandHandler, mTaskStackListener, mActivityTaskManager,
                 Optional.of(mDesktopUserRepositories), mTaskStackTransitionObserver,
-                mMainExecutor, desktopState, mDesktopModeCompatPolicy);
+                mMainExecutor, desktopState, mDesktopModeCompatPolicy,
+                mock(FocusTransitionObserver.class), Optional.empty());
         mRecentTasksController = spy(mRecentTasksControllerReal);
         mShellTaskOrganizer = new ShellTaskOrganizer(mShellInit, mShellCommandHandler,
                 mRootTaskDisplayAreaOrganizer, null /* sizeCompatUI */, Optional.empty(),

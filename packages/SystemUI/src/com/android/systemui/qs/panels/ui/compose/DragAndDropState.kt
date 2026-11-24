@@ -21,6 +21,9 @@ import android.view.View
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.lazy.grid.LazyGridItemInfo
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -35,11 +38,17 @@ import androidx.compose.ui.draganddrop.DragAndDropTransferData
 import androidx.compose.ui.draganddrop.mimeTypes
 import androidx.compose.ui.draganddrop.toAndroidDragEvent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.res.booleanResource
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.toRect
 import com.android.systemui.qs.panels.shared.model.SizedTile
 import com.android.systemui.qs.panels.ui.viewmodel.EditTileViewModel
 import com.android.systemui.qs.pipeline.shared.TileSpec
+import com.android.systemui.res.R
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 /** Holds the [TileSpec] of the tile being moved and receives drag and drop events. */
 interface DragAndDropState {
@@ -191,41 +200,79 @@ fun Modifier.dragAndDropTileSource(
     onDragStart: () -> Unit,
 ): Modifier {
     val dragState by rememberUpdatedState(dragAndDropState)
+    val isImmediateMouseDragEnabled =
+        booleanResource(R.bool.config_qsEditModeImmediateMouseDrag)
     @Suppress("DEPRECATION") // b/368361871
     return dragAndDropSource(
         block = {
-            detectDragGesturesAfterLongPress(
-                onDrag = { _, _ -> },
-                onDragStart = {
-                    check(!dragState.dragInProgress)
+            val startTileTransfer: () -> Unit = {
+                check(!dragState.dragInProgress)
 
-                    dragState.onStarted(sizedTile, dragType)
-                    onDragStart()
+                dragState.onStarted(sizedTile, dragType)
+                onDragStart()
 
-                    // The tilespec from the ClipData transferred isn't actually needed as we're
-                    // moving a tile within the same application. We're using a custom MIME type to
-                    // limit the drag event to QS.
-                    startTransfer(
-                        DragAndDropTransferData(
-                            ClipData(
-                                QsDragAndDrop.CLIPDATA_LABEL,
-                                arrayOf(QsDragAndDrop.TILESPEC_MIME_TYPE),
-                                ClipData.Item(sizedTile.tile.tileSpec.spec),
-                            ),
-                            flags = View.DRAG_FLAG_OPAQUE,
-                        )
+                // The tilespec from the ClipData transferred isn't actually needed as we're
+                // moving a tile within the same application. We're using a custom MIME type to
+                // limit the drag event to QS.
+                startTransfer(
+                    DragAndDropTransferData(
+                        ClipData(
+                            QsDragAndDrop.CLIPDATA_LABEL,
+                            arrayOf(QsDragAndDrop.TILESPEC_MIME_TYPE),
+                            ClipData.Item(sizedTile.tile.tileSpec.spec),
+                        ),
+                        flags = View.DRAG_FLAG_OPAQUE,
                     )
-                },
-                onDragEnd = {
-                    check(dragState.dragInProgress)
+                )
+            }
+            coroutineScope {
+                launch {
+                    detectImmediateMouseDrag(
+                        isEnabled = isImmediateMouseDragEnabled,
+                        isDragInProgress = { dragState.dragInProgress },
+                        onDragStart = startTileTransfer,
+                    )
+                }
+                detectDragGesturesAfterLongPress(
+                    onDrag = { _, _ -> },
+                    onDragStart = { startTileTransfer() },
+                    onDragEnd = {
+                        check(dragState.dragInProgress)
 
-                    // onDragEnd is only called if the drag is ended before a drag and drop session
-                    // is started. In this case, we clear the drag state.
-                    dragState.onDrop()
-                },
-            )
+                        // onDragEnd is only called if the drag is ended before a drag and drop
+                        // session is started. In this case, we clear the drag state.
+                        dragState.onDrop()
+                    },
+                )
+            }
         }
     )
+}
+
+/**
+ * Starts a drag as soon as a mouse moves past the touch slop with a button pressed, without the
+ * long press that touch needs. Touch keeps the long press so that a swipe still scrolls the grid.
+ */
+private suspend fun PointerInputScope.detectImmediateMouseDrag(
+    isEnabled: Boolean,
+    isDragInProgress: () -> Boolean,
+    onDragStart: () -> Unit,
+) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        val start =
+            TileDragStart.find(
+                isMouse = down.type == PointerType.Mouse,
+                isImmediateMouseDragEnabled = isEnabled,
+            )
+        if (start != TileDragStart.AfterTouchSlop) return@awaitEachGesture
+
+        // Consuming the move cancels the pending long press, so only one drag starts.
+        awaitTouchSlopOrCancellation(down.id) { change, _ -> change.consume() }
+            ?: return@awaitEachGesture
+        if (isDragInProgress()) return@awaitEachGesture
+        onDragStart()
+    }
 }
 
 private object QsDragAndDrop {

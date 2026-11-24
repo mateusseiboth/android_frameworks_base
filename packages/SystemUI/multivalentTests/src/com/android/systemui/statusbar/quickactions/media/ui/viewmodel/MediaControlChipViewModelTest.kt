@@ -16,6 +16,7 @@
 
 package com.android.systemui.statusbar.quickactions.media.ui.viewmodel
 
+import android.content.applicationContext
 import android.platform.test.flag.junit.FlagsParameterization
 import androidx.test.filters.SmallTest
 import com.android.systemui.SysuiTestCase
@@ -30,7 +31,9 @@ import com.android.systemui.media.controls.domain.pipeline.MediaDataManager
 import com.android.systemui.media.controls.shared.model.MediaData
 import com.android.systemui.media.remedia.data.repository.mediaRepository
 import com.android.systemui.media.remedia.shared.flag.MediaControlsInComposeFlag
+import com.android.systemui.res.R
 import com.android.systemui.statusbar.quickactions.media.domain.interactor.mediaControlChipInteractor
+import com.android.systemui.statusbar.quickactions.shared.model.ChipContent
 import com.android.systemui.statusbar.quickactions.shared.model.QuickActionChipModel
 import com.android.systemui.testKosmos
 import com.google.common.truth.Truth.assertThat
@@ -86,6 +89,38 @@ class MediaControlChipViewModelTest(flags: FlagsParameterization) : SysuiTestCas
             updateMedia(userMedia)
 
             assertThat(underTest.chip).isInstanceOf(QuickActionChipModel.PopupChip::class.java)
+        }
+
+    @Test
+    fun chip_activeMedia_showsPlayPauseAndWaveformByDefault() =
+        kosmos.runTest {
+            updateMedia(MediaData(active = true, song = "test"))
+
+            val chip = underTest.chip as QuickActionChipModel.PopupChip
+            assertThat(chip.chipContent).isInstanceOf(ChipContent.IconOnly::class.java)
+            assertThat(chip.isTitleChip).isFalse()
+            assertThat(chip.hoverIcons).isNull()
+        }
+
+    @Test
+    fun chip_titleChipEnabled_showsTheTitleAndPlayPauseOnHover() =
+        kosmos.runTest {
+            overrideResource(R.bool.config_statusBarMediaChipShowsTitle, true)
+            val titleChipViewModel =
+                MediaControlChipViewModel(
+                    applicationContext = applicationContext,
+                    mediaControlChipInteractor = mediaControlChipInteractor,
+                    popupViewModelFactory = mediaControlPopupViewModelFactory,
+                )
+            titleChipViewModel.activateIn(testScope)
+
+            updateMedia(MediaData(active = true, song = "test"))
+
+            val chip = titleChipViewModel.chip as QuickActionChipModel.PopupChip
+            assertThat(chip.chipContent).isEqualTo(ChipContent.Text("test"))
+            assertThat(chip.isTitleChip).isTrue()
+            assertThat(chip.icons).hasSize(1)
+            assertThat(chip.hoverIcons).hasSize(1)
         }
 
     private fun updateMedia(mediaData: MediaData) {

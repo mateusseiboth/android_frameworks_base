@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2026 The LineageOS Project
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+         http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+-->
+<!-- Desktop window behaviors of PC builds. All off by default, turned on by a device overlay. -->
+<resources>
+    <!-- Whether a desktop window that back navigation closes stays in its desk as a minimized
+         window (restored from the taskbar by relaunching it) instead of leaving the desk. -->
+    <bool name="config_minimizeDesktopWindowOnBackClose">false</bool>
+
+    <!-- Whether the bounds of a window snapped to half of the screen are left out of the
+         remembered launch bounds of its app, so a relaunch opens it at its last free size. -->
+    <bool name="config_excludeTiledBoundsFromRememberedBounds">false</bool>
+
+    <!-- Whether Home takes the input focus while the home screen is peeked, so keyboard input
+         reaches the launcher; the top desktop window takes it back when the peek ends. -->
+    <bool name="config_focusHomeWhilePeeking">false</bool>
+
+    <!-- Whether the desktop windows come back in the stacking order they had when the desktop
+         was left (Home, Overview, a fullscreen app) once it is entered again. -->
+    <bool name="config_preserveDesktopZOrderOnExit">false</bool>
+
+    <!-- Whether, on a desktop-first display that shows Home behind the desktop, the desk stays
+         active and empty when its last window closes, so the next app opens as a window. -->
+    <bool name="config_keepEmptyDeskActiveShowingHome">false</bool>
+
+    <!-- Whether restoring a minimized window that was snapped to half of the screen tiles it back
+         into that half, while no other window took it. -->
+    <bool name="config_restoreTilingOnUnminimize">false</bool>
+</resources>

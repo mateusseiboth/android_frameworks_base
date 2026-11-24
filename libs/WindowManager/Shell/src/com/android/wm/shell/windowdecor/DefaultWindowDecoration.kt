@@ -44,6 +44,7 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.WindowManager.LayoutParams.INPUT_FEATURE_SPY
 import android.view.WindowManager.TRANSIT_CHANGE
+import android.view.WindowInsets
 import android.view.WindowManagerGlobal
 import android.window.DesktopExperienceFlags
 import android.window.DesktopModeFlags
@@ -102,6 +103,7 @@ import com.android.wm.shell.windowdecor.extension.getDimensionPixelSize
 import com.android.wm.shell.windowdecor.extension.isDragResizable
 import com.android.wm.shell.windowdecor.extension.isFullscreen
 import com.android.wm.shell.windowdecor.extension.isTransparentCaptionBarAppearance
+import com.android.wm.shell.windowdecor.extension.requestingImmersive
 import com.android.wm.shell.windowdecor.viewholder.AppHeaderViewHolder
 import com.android.wm.shell.windowdecor.viewholder.FullscreenHeaderViewHolder
 import kotlinx.coroutines.CoroutineScope
@@ -204,6 +206,9 @@ constructor(
     private val taskBounds
         get() = taskInfo.getConfiguration().windowConfiguration.bounds
 
+    // Where the pointer hovers the status bar of the task's display, null when it does not.
+    private var statusBarHoverX: Float? = null
+
     private val taskWidth
         get() = taskBounds.width()
 
@@ -225,6 +230,8 @@ constructor(
 
     val manageWindowsMenuController: ManageWindowsMenuController?
         get() = captionController?.manageWindowsMenuController
+
+    private val fullscreenHeaderRule = buildFullscreenHeaderRule(context)
 
     private val appTheme = { taskInfo: RunningTaskInfo ->
         decorThemeUtilFactory.create(context).getAppTheme(taskInfo)
@@ -456,15 +463,24 @@ constructor(
         }
 
     /**
-     * Returns `true` if the task is in desktop windowing mode and is currently in fullscreen.
+     * Returns `true` if the task is in desktop windowing mode and is currently in fullscreen, or in
+     * split screen where [fullscreenHeaderRule] gives split-screen tasks the fullscreen header.
      *
      * This is distinct from an app requesting immersive mode while in freeform.
      */
-    private fun isFullscreenDesktop(taskInfo: RunningTaskInfo): Boolean =
+    private fun isFullscreenDesktop(
+        taskInfo: RunningTaskInfo,
+        splitScreenController: SplitScreenController,
+    ): Boolean =
         if (DesktopExperienceFlags.ENABLE_FULLSCREEN_WINDOW_CONTROLS.isTrue()) {
-            taskInfo.configuration.windowConfiguration.getWindowingMode() ==
-                WINDOWING_MODE_FULLSCREEN &&
-                rootTaskDisplayAreaOrganizer.isDisplayDesktopFirst(taskInfo.displayId)
+            fullscreenHeaderRule.hasFullscreenHeader(
+                isDesktopFirstDisplay =
+                    rootTaskDisplayAreaOrganizer.isDisplayDesktopFirst(taskInfo.displayId),
+                isFullscreen =
+                    taskInfo.configuration.windowConfiguration.getWindowingMode() ==
+                        WINDOWING_MODE_FULLSCREEN,
+                isInSplitScreen = splitScreenController.isTaskInSplitScreen(taskInfo.taskId),
+            )
         } else {
             false
         }
@@ -491,11 +507,19 @@ constructor(
                 !shouldCreateCaption -> CaptionController.CaptionType.NO_CAPTION
                 isPinnedLayer -> CaptionController.CaptionType.APP_PINNED
                 taskInfo.isFreeform -> CaptionController.CaptionType.APP_HEADER
-                isFullscreenDesktop(taskInfo) -> CaptionController.CaptionType.FULLSCREEN_HEADER
+                isFullscreenDesktop(taskInfo, splitScreenController) ->
+                    CaptionController.CaptionType.FULLSCREEN_HEADER
                 else -> CaptionController.CaptionType.APP_HANDLE
             }
         val isAppHeader = captionType == CaptionController.CaptionType.APP_HEADER
         val isAppHandle = captionType == CaptionController.CaptionType.APP_HANDLE
+        // A fullscreen header that leaves its area to the app's own caption takes the app header's
+        // caption insets and input handling.
+        val isCustomFullscreenHeader =
+            fullscreenHeaderRule.hasCustomHeader(
+                isFullscreenHeader = captionType == CaptionController.CaptionType.FULLSCREEN_HEADER,
+                isTransparentCaptionBar = taskInfo.isTransparentCaptionBarAppearance,
+            )
 
         // Allow the handle view to be delayed since the handle is just a small addition to the
         // window, whereas the header cannot be delayed because it is expected to be visible from
@@ -506,11 +530,15 @@ constructor(
             !splitScreenController.isLeftRightSplit &&
                 (splitScreenController.getSplitPosition(taskInfo.taskId) ==
                     SPLIT_POSITION_BOTTOM_OR_RIGHT)
-        val isInsetSource = (isAppHeader && !inFullImmersive) || isPinnedLayer || isBottomSplit
+        val isInsetSource =
+            (isAppHeader && !inFullImmersive) ||
+                isPinnedLayer ||
+                isBottomSplit ||
+                isCustomFullscreenHeader
         var inputFeatures = 0
         var insetSourceFlags = 0
         var shouldSetAppBounds = false
-        if (isAppHeader || isPinnedLayer) {
+        if (isAppHeader || isPinnedLayer || isCustomFullscreenHeader) {
             if (taskInfo.isTransparentCaptionBarAppearance) {
                 // The app is requesting to customize the caption bar, which means input on
                 // customizable/exclusion regions must go to the app instead of to the system.
@@ -586,11 +614,11 @@ constructor(
         val shouldSetBackground = desktopConfig.shouldSetBackground(taskInfo)
 
         val isCaptionVisible =
-            if (DesktopExperienceFlags.ENABLE_ADD_WINDOW_DECORATION_TO_ALL_TASKS.isTrue) {
+            (if (DesktopExperienceFlags.ENABLE_ADD_WINDOW_DECORATION_TO_ALL_TASKS.isTrue) {
                 shouldShowCaption(taskInfo, captionType)
             } else {
                 shouldShowCaption(taskInfo, lockTaskChangeListener.isTaskLocked)
-            }
+            }) && !isHiddenByStatusBarHover(taskInfo, captionType)
 
         // Task outline (i.e. corner radius and shadows) should update when a task is in desktop
         // windowing with non-fullscreen bounds
@@ -756,6 +784,48 @@ constructor(
                 true
             }
         }
+
+    /**
+     * Updates where the pointer hovers the status bar of the task's display ([hoverX], null when it
+     * does not), relaying out when that changes whether the revealed header shows.
+     */
+    fun onStatusBarHoverChanged(hoverX: Float?) {
+        val wasHidden = isHiddenByStatusBarHover(taskInfo, captionType)
+        statusBarHoverX = hoverX
+        if (wasHidden == isHiddenByStatusBarHover(taskInfo, captionType)) return
+        relayout(taskInfo, hasGlobalFocus, exclusionRegion)
+    }
+
+    /**
+     * Whether the pointer hovering the status bar over another task hides this task's fullscreen
+     * header, which only shows as a reveal (the app is immersive).
+     */
+    private fun isHiddenByStatusBarHover(
+        taskInfo: RunningTaskInfo,
+        captionType: CaptionController.CaptionType,
+    ): Boolean {
+        val hoverX = statusBarHoverX ?: return false
+        if (captionType != CaptionController.CaptionType.FULLSCREEN_HEADER) return false
+        if (!inFullImmersive && !taskInfo.requestingImmersive) return false
+        val insetsState = displayController.getInsetsState(taskInfo.displayId) ?: return false
+        val statusBarBottom =
+            insetsState
+                .calculateInsets(
+                    /* frame= */ insetsState.displayFrame,
+                    /* hostBounds= */ null,
+                    /* types= */ WindowInsets.Type.statusBars(),
+                    /* ignoreVisibility= */ true,
+                )
+                .top
+        val bounds = taskInfo.configuration.windowConfiguration.bounds
+        return !StatusBarHoverHeaderReveal.isHeaderShown(
+            hoverX = hoverX,
+            taskLeft = bounds.left,
+            taskRight = bounds.right,
+            taskTop = bounds.top,
+            statusBarBottom = statusBarBottom,
+        )
+    }
 
     @Deprecated("Use shouldShowCaption(taskInfo)")
     private fun shouldShowCaption(taskInfo: RunningTaskInfo, isTaskLocked: Boolean): Boolean {

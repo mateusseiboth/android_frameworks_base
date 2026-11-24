@@ -78,6 +78,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.booleanResource
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -368,6 +369,21 @@ fun ContentScope.NestedScrollingNotificationPanel(
                         )
                     }
                 }
+        }
+
+        // A notification that grew past the bottom of the stack (expanded by a drag, a click, a key
+        // or an accessibility action) asks the stack to scroll so it stays in view.
+        if (booleanResource(R.bool.config_scrollShadeOnBottomNotificationExpand)) {
+            LaunchedEffect(viewModel) {
+                viewModel.syntheticScroll.collect { delta ->
+                    if (delta <= 0f) return@collect
+                    scrollStackBy(
+                        delta = Offset(x = 0f, y = delta),
+                        nestedScrollDispatcher = nestedScrollDispatcher,
+                        scrollState = contentScrollState,
+                    )
+                }
+            }
         }
 
         // TalkBack sends a scroll event, when it wants to navigate to an item that is not displayed

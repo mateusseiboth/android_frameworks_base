@@ -33,6 +33,7 @@ import java.util.function.Consumer
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -99,7 +100,7 @@ constructor(
      * should only happen when a notification expansion hits the bottom of the screen, so it is
      * necessary to scroll up to keep expanding the notification.
      */
-    val syntheticScroll: Flow<Float> = viewHeightRepository.syntheticScroll.asStateFlow()
+    val syntheticScroll: Flow<Float> = viewHeightRepository.syntheticScroll.asSharedFlow()
 
     /**
      * Whether the current touch gesture is overscroll. If true, it means the NSSL has already
@@ -155,7 +156,7 @@ constructor(
 
     /** Sets the amount (px) that the notification stack should scroll due to internal expansion. */
     fun setSyntheticScroll(delta: Float) {
-        viewHeightRepository.syntheticScroll.value = delta
+        viewHeightRepository.syntheticScroll.tryEmit(delta)
     }
 
     /** Sends an [AccessibilityScrollEvent] to scroll the stack up or down. */

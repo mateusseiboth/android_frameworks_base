@@ -83,6 +83,9 @@ class DesktopTilingDecorViewModel(
     var tilingHandlerByUserAndDeskId = SparseArray<SparseArray<DesktopTilingWindowDecoration>>()
     var currentUserId: Int = -1
 
+    /** Tiles a restored window back into its half, see config_restoreTilingOnUnminimize. */
+    var tilingRestoreListener: TilingRestoreListener? = null
+
     init {
         // TODO(b/374309287): Move this interface implementation to
         // [DesktopModeWindowDecorViewModel] when the migration is done.
@@ -129,7 +132,12 @@ class DesktopTilingDecorViewModel(
                             shellController,
                             interactionJankMonitor,
                         )
-                        .also { userHandlerList[deskId] = it }
+                        .also {
+                            it.tilingRestoreListener = TilingRestoreListener { task, position ->
+                                tilingRestoreListener?.onTilingRestoreRequested(task, position)
+                            }
+                            userHandlerList[deskId] = it
+                        }
                 }
         transitions.registerObserver(handler)
         return handler.onAppTiled(

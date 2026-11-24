@@ -33,6 +33,12 @@ interface WindowDecorTaskResourceLoader {
      */
     fun getNameAndHeaderIcon(taskInfo: RunningTaskInfo, callback: (CharSequence, Bitmap) -> Unit)
 
+    /**
+     * Whether the name and icon loaded for this task no longer match the label and icon it sets on
+     * its task description, so a header showing them should ask for them again.
+     */
+    fun isNameAndHeaderIconStale(taskInfo: RunningTaskInfo): Boolean = false
+
     /** Returns the icon for use by the resize veil for this task. */
     suspend fun getVeilIcon(taskInfo: RunningTaskInfo): Bitmap
 

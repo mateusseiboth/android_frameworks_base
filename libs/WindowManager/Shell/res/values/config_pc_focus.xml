@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2026 The LineageOS Project
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+         http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+-->
+<resources>
+    <!-- Whether the desktop scrim (opaque status bar or dimmed wallpaper behind a maximized or
+         tiled window) is computed again when the stable insets of a display change, for example
+         when the taskbar or the status bar changes size. -->
+    <bool name="config_desktopScrimFollowsStableInsets">false</bool>
+
+    <!-- Whether the desktop scrim is computed again when a transition it does not drive is over:
+         a window leaving picture-in-picture for the desktop, or the window bounds update after a
+         display layout change. Keeps the status bar from staying opaque or transparent by
+         mistake. -->
+    <bool name="config_desktopScrimTracksTransitions">false</bool>
+
+    <!-- Whether a desktop window gets a new snapshot when it loses focus, so the thumbnails of
+         Alt+Tab and Overview show its current content. -->
+    <bool name="config_desktopSnapshotOnFocusLoss">false</bool>
+
+    <!-- Whether the desktop windows in the recent tasks, and so in Alt+Tab, are ordered by the
+         last time they had focus instead of the last time they came to the front. -->
+    <bool name="config_desktopAltTabOrdersByLastFocus">false</bool>
+</resources>

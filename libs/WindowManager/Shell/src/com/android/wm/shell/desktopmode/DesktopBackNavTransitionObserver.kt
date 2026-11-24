@@ -50,6 +50,11 @@ class DesktopBackNavTransitionObserver(
     private val transitions: Transitions,
     desktopState: DesktopState,
     shellInit: ShellInit,
+    /**
+     * Whether a window that back navigation closes stays minimized in its desk instead of leaving
+     * it, so it can be restored from the taskbar. See config_minimizeDesktopWindowOnBackClose.
+     */
+    private val minimizeOnBackClose: Boolean = false,
 ) {
     init {
         if (desktopState.canEnterDesktopMode) {
@@ -90,13 +95,15 @@ class DesktopBackNavTransitionObserver(
     private fun handleBackNavigation(transition: IBinder, info: TransitionInfo) {
         val taskToMinimize = findTaskToMinimize(info) ?: return
         logD("handleBackNavigation taskToMinimize=%s", taskToMinimize)
-        desktopUserRepositories
-            .getProfile(taskToMinimize.taskInfo.userId)
-            .minimizeTaskInDesk(
-                displayId = taskToMinimize.displayId,
-                deskId = taskToMinimize.deskId,
-                taskId = taskToMinimize.taskId,
-            )
+        val repository = desktopUserRepositories.getProfile(taskToMinimize.taskInfo.userId)
+        repository.minimizeTaskInDesk(
+            displayId = taskToMinimize.displayId,
+            deskId = taskToMinimize.deskId,
+            taskId = taskToMinimize.taskId,
+        )
+        if (shouldKeepAfterClose(taskToMinimize)) {
+            repository.addBackClosedTask(taskToMinimize.taskId)
+        }
         desktopMixedTransitionHandler.addPendingMixedTransition(
             DesktopMixedTransitionHandler.PendingMixedTransition.Minimize(
                 transition,
@@ -125,13 +132,22 @@ class DesktopBackNavTransitionObserver(
         val displayId: Int,
         val isLastTask: Boolean,
         val shouldReparentToDesk: Boolean,
+        val isClosing: Boolean,
     ) {
         constructor(
             taskInfo: RunningTaskInfo,
             deskId: Int,
             isLastTask: Boolean,
             shouldReparentToDesk: Boolean,
-        ) : this(taskInfo.taskId, deskId, taskInfo.displayId, isLastTask, shouldReparentToDesk) {
+            isClosing: Boolean = false,
+        ) : this(
+            taskInfo.taskId,
+            deskId,
+            taskInfo.displayId,
+            isLastTask,
+            shouldReparentToDesk,
+            isClosing,
+        ) {
             this.taskInfo = taskInfo
         }
 
@@ -198,6 +214,7 @@ class DesktopBackNavTransitionObserver(
                 deskId = deskId,
                 isLastTask = hasWallpaperClosing,
                 shouldReparentToDesk = false,
+                isClosing = true,
             )
         }
         return null
@@ -231,6 +248,9 @@ class DesktopBackNavTransitionObserver(
             shouldReparentToDesk = !desksOrganizer.isMinimizedInDeskAtEnd(change),
         )
     }
+
+    private fun shouldKeepAfterClose(taskToMinimize: TaskToMinimize): Boolean =
+        minimizeOnBackClose && taskToMinimize.isClosing
 
     private fun DesktopRepository.isDesktopTask(task: RunningTaskInfo): Boolean =
         isActiveTask(task.taskId)

@@ -30,6 +30,7 @@ import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_BOUNCER_
 import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_COMMUNAL_HUB_SHOWING
 import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_NOTIFICATION_PANEL_EXPANDED
 import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_NOTIFICATION_PANEL_VISIBLE
+import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_QUICK_ACTIONS_SHOWING
 import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_QUICK_SETTINGS_EXPANDED
 import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_STATUS_BAR_KEYGUARD_SHOWING
 import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_STATUS_BAR_KEYGUARD_SHOWING_OCCLUDED
@@ -57,6 +58,7 @@ class SceneContainerPluginFlagEvaluationTest(private val params: Params) : Sysui
                 SYSUI_STATE_STATUS_BAR_KEYGUARD_SHOWING,
                 SYSUI_STATE_STATUS_BAR_KEYGUARD_SHOWING_OCCLUDED,
                 SYSUI_STATE_COMMUNAL_HUB_SHOWING,
+                SYSUI_STATE_QUICK_ACTIONS_SHOWING,
             )
 
         @Parameters(name = "{0}")
@@ -314,6 +316,11 @@ class SceneContainerPluginFlagEvaluationTest(private val params: Params) : Sysui
                             SYSUI_STATE_NOTIFICATION_PANEL_VISIBLE,
                             SYSUI_STATE_QUICK_SETTINGS_EXPANDED,
                         ),
+                ),
+                Params(
+                    currentScene = Scenes.Gone,
+                    currentOverlays = setOf(Overlays.QuickActions),
+                    expectedFlags = setOf(SYSUI_STATE_QUICK_ACTIONS_SHOWING),
                 ),
             )
         }

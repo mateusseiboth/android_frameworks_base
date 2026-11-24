@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright (C) 2026 The LineageOS Project
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+  -->
+<resources>
+    <!-- Whether the horizontal volume dialog leaves out the ringer drawer and the settings
+         button, giving their room to a wider slider. -->
+    <bool name="config_volumeDialogHorizontalWithoutButtons">false</bool>
+
+    <!-- Maximum width of the horizontal volume dialog's slider without the ringer drawer and the
+         settings button. -->
+    <dimen name="volume_dialog_horizontal_slider_width_without_buttons">340dp</dimen>
+
+    <!-- Side margins of the horizontal volume dialog's slider without the ringer drawer and the
+         settings button. -->
+    <dimen name="volume_dialog_slider_horizontal_margin_without_buttons">38dp</dimen>
+
+    <!-- Whether a mouse drag moves a tile in the quick settings edit grid at once, without the
+         long press that touch needs. -->
+    <bool name="config_qsEditModeImmediateMouseDrag">false</bool>
+
+    <!-- Whether the keyboard shortcut helper opens as a dialog with a categories sidebar instead
+         of a bottom sheet, on displays that are not compact. -->
+    <bool name="config_shortcutHelperAsDialog">false</bool>
+
+    <!-- Width of the categories sidebar in the keyboard shortcut helper dialog. -->
+    <dimen name="shortcut_helper_dialog_sidebar_width">280dp</dimen>
+
+    <!-- Tile specs offered in the quick settings edit mode besides quick_settings_tiles_stock,
+         comma separated (for example "ime", the input method tile). -->
+    <string name="config_quickSettingsExtraStockTiles" translatable="false"></string>
+
+    <!-- Whether keyboard focus shows Material 3 focus rings on the notification action, expand
+         and smart reply buttons, dialog buttons, the quick settings edit mode top bar and the
+         inline power menu. -->
+    <bool name="config_materialFocusRings">false</bool>
+
+    <!-- Stroke width of the Material 3 focus rings. -->
+    <dimen name="material_focus_ring_stroke_width">3dp</dimen>
+
+    <!-- Gap between a focused element and its Material 3 focus ring. -->
+    <dimen name="material_focus_ring_gap">2dp</dimen>
+
+    <!-- Corner radius of a notification action button's focus ring when the theme gives the
+         buttons no corner radius. -->
+    <dimen name="notification_fallback_focus_ring_radius">4dp</dimen>
+
+    <!-- Vertical inset of the smart reply chip inside its button, as in
+         notification_2025_smart_reply_button_background. -->
+    <dimen name="notification_2025_smart_reply_button_inset">8dp</dimen>
+
+    <!-- Tag holding the focus ring drawable a view got from MaterialFocusRings. -->
+    <item type="id" name="material_focus_ring" />
+</resources>

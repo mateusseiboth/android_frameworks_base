@@ -205,6 +205,8 @@ public class NotificationStackScrollLayoutController implements Dumpable {
      */
     private int mBarState;
     private HeadsUpAppearanceController mHeadsUpAppearanceController;
+    private final List<Consumer<ExpandableNotificationRow>> mHeadsUpAnimatingAwayListeners =
+            new ArrayList<>();
 
     private final NotificationTargetsHelper mNotificationTargetsHelper;
     private final SecureSettings mSecureSettings;
@@ -1061,6 +1063,19 @@ public class NotificationStackScrollLayoutController implements Dumpable {
 
     public void removeOnLayoutChangeListener(View.OnLayoutChangeListener listener) {
         mView.removeOnLayoutChangeListener(listener);
+    }
+
+    /**
+     * Adds a listener called with a row whose heads-up disappear animation starts or ends, for
+     * the heads-up appearance on the desktop status bar.
+     */
+    public void addHeadsUpAnimatingAwayListener(Consumer<ExpandableNotificationRow> listener) {
+        mHeadsUpAnimatingAwayListeners.add(listener);
+    }
+
+    /** Removes a listener added by {@link #addHeadsUpAnimatingAwayListener}. */
+    public void removeHeadsUpAnimatingAwayListener(Consumer<ExpandableNotificationRow> listener) {
+        mHeadsUpAnimatingAwayListeners.remove(listener);
     }
 
     public void setHeadsUpAppearanceController(HeadsUpAppearanceController controller) {
@@ -2098,8 +2113,15 @@ public class NotificationStackScrollLayoutController implements Dumpable {
         @Override
         public void bindRow(ExpandableNotificationRow row) {
             row.setHeadsUpAnimatingAwayListener(animatingAway -> {
-                mHeadsUpAppearanceController.updateHeader(row);
-                mHeadsUpAppearanceController.updateHeadsUpAndPulsingRoundness(row);
+                // The desktop status bar has no phone status bar view, hence no phone controller.
+                if (mHeadsUpAppearanceController != null) {
+                    mHeadsUpAppearanceController.updateHeader(row);
+                    mHeadsUpAppearanceController.updateHeadsUpAndPulsingRoundness(row);
+                }
+                for (Consumer<ExpandableNotificationRow> listener
+                        : mHeadsUpAnimatingAwayListeners) {
+                    listener.accept(row);
+                }
                 if (GroupHunAnimationFix.isEnabled() && !animatingAway) {
                     // invalidate list to make sure the row is sorted to the correct section
                     row.getEntryAdapter().onEntryAnimatingAwayEnded();

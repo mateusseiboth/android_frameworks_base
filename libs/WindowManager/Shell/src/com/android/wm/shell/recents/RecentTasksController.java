@@ -42,6 +42,7 @@ import android.graphics.Color;
 import android.graphics.Point;
 import android.os.Bundle;
 import android.os.RemoteException;
+import android.os.SystemClock;
 import android.util.Slog;
 import android.util.SparseIntArray;
 import android.window.DesktopModeFlags;
@@ -63,7 +64,9 @@ import com.android.wm.shell.common.TaskStackListenerCallback;
 import com.android.wm.shell.common.TaskStackListenerImpl;
 import com.android.wm.shell.desktopmode.DesktopUserRepositories;
 import com.android.wm.shell.desktopmode.data.DesktopRepository;
+import com.android.wm.shell.R;
 import com.android.wm.shell.protolog.ShellProtoLogGroup;
+import com.android.wm.shell.shared.FocusTransitionListener;
 import com.android.wm.shell.shared.GroupedTaskInfo;
 import com.android.wm.shell.shared.annotations.ExternalThread;
 import com.android.wm.shell.shared.annotations.ShellMainThread;
@@ -73,6 +76,7 @@ import com.android.wm.shell.sysui.ShellCommandHandler;
 import com.android.wm.shell.sysui.ShellController;
 import com.android.wm.shell.sysui.ShellInit;
 import com.android.wm.shell.sysui.UserChangeListener;
+import com.android.wm.shell.transition.FocusTransitionObserver;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -114,6 +118,9 @@ public class RecentTasksController implements TaskStackListenerCallback,
     private final RecentsShellCommandHandler mRecentsShellCommandHandler;
     private final DesktopState mDesktopState;
     private final DesktopModeCompatPolicy mDesktopModeCompatPolicy;
+    private final FocusTransitionObserver mFocusTransitionObserver;
+    // Present when the desktop tasks are ordered by their last focus
+    private final Optional<DesktopTaskFocusHistory> mDeskFocusHistory;
     private RecentsTransitionHandler mTransitionHandler = null;
     private IRecentTasksListener mListener;
     private final boolean mPcFeatureEnabled;
@@ -157,14 +164,20 @@ public class RecentTasksController implements TaskStackListenerCallback,
             TaskStackTransitionObserver taskStackTransitionObserver,
             @ShellMainThread ShellExecutor mainExecutor,
             DesktopState desktopState,
-            DesktopModeCompatPolicy desktopModeCompatPolicy
+            DesktopModeCompatPolicy desktopModeCompatPolicy,
+            FocusTransitionObserver focusTransitionObserver
     ) {
         if (!context.getResources().getBoolean(com.android.internal.R.bool.config_hasRecents)) {
             return null;
         }
+        final Optional<DesktopTaskFocusHistory> deskFocusHistory =
+                Optional.of(context.getResources())
+                        .filter(res -> res.getBoolean(R.bool.config_desktopAltTabOrdersByLastFocus))
+                        .map(res -> new DesktopTaskFocusHistory());
         return new RecentTasksController(context, shellInit, shellController, shellCommandHandler,
                 taskStackListener, activityTaskManager, desktopUserRepositories,
-                taskStackTransitionObserver, mainExecutor, desktopState, desktopModeCompatPolicy);
+                taskStackTransitionObserver, mainExecutor, desktopState, desktopModeCompatPolicy,
+                focusTransitionObserver, deskFocusHistory);
     }
 
     RecentTasksController(Context context,
@@ -177,7 +190,9 @@ public class RecentTasksController implements TaskStackListenerCallback,
             TaskStackTransitionObserver taskStackTransitionObserver,
             ShellExecutor mainExecutor,
             DesktopState desktopState,
-            DesktopModeCompatPolicy desktopModeCompatPolicy) {
+            DesktopModeCompatPolicy desktopModeCompatPolicy,
+            FocusTransitionObserver focusTransitionObserver,
+            Optional<DesktopTaskFocusHistory> deskFocusHistory) {
         mContext = context;
         mShellController = shellController;
         mShellCommandHandler = shellCommandHandler;
@@ -190,6 +205,8 @@ public class RecentTasksController implements TaskStackListenerCallback,
         mRecentsShellCommandHandler = new RecentsShellCommandHandler(this);
         mDesktopState = desktopState;
         mDesktopModeCompatPolicy = desktopModeCompatPolicy;
+        mFocusTransitionObserver = focusTransitionObserver;
+        mDeskFocusHistory = deskFocusHistory;
         shellInit.addInitCallback(this::onInit, this);
     }
 
@@ -216,6 +233,19 @@ public class RecentTasksController implements TaskStackListenerCallback,
                 mMainExecutor);
         mContext.getSystemService(KeyguardManager.class).addKeyguardLockedStateListener(
                 mMainExecutor, isKeyguardLocked -> notifyRecentTasksChanged());
+        mDeskFocusHistory.ifPresent(this::recordDeskFocus);
+    }
+
+    /** Feeds {@code history} with the tasks that get the global focus. */
+    private void recordDeskFocus(DesktopTaskFocusHistory history) {
+        mFocusTransitionObserver.setLocalFocusTransitionListener(new FocusTransitionListener() {
+            @Override
+            public void onFocusedTaskChanged(RunningTaskInfo taskInfo, boolean isFocusedOnDisplay,
+                    boolean isFocusedGlobally) {
+                if (!isFocusedGlobally) return;
+                history.onTaskFocused(taskInfo.taskId, SystemClock.elapsedRealtime());
+            }
+        }, mMainExecutor);
     }
 
     void setTransitionHandler(RecentsTransitionHandler handler) {
@@ -336,6 +366,7 @@ public class RecentTasksController implements TaskStackListenerCallback,
     public void onTaskRemoved(RunningTaskInfo taskInfo) {
         // Remove any split pairs associated with this task
         removeSplitPair(taskInfo.taskId);
+        mDeskFocusHistory.ifPresent(history -> history.onTaskRemoved(taskInfo.taskId));
         notifyRunningTaskVanished(taskInfo);
         if (!enableShellTopTaskTracking()) {
             // Only notify recent tasks changed if we aren't already notifying the visible tasks
@@ -524,8 +555,30 @@ public class RecentTasksController implements TaskStackListenerCallback,
     @VisibleForTesting
     ArrayList<GroupedTaskInfo> getRecentTasks(int maxNum, int flags, int userId) {
         // Note: the returned task list is ordered from the most-recent to least-recent order
-        return generateList(mActivityTaskManager.getRecentTasks(maxNum, flags, userId),
-                "getRecentTasks");
+        final List<RecentTaskInfo> tasks =
+                mActivityTaskManager.getRecentTasks(maxNum, flags, userId);
+        return generateList(mDeskFocusHistory
+                .map(history -> orderDeskTasksByLastFocus(history, tasks))
+                .orElse(tasks), "getRecentTasks");
+    }
+
+    /**
+     * Orders the desktop tasks of {@code tasks} by the last time they got focus, and reports that
+     * time as their active time, which is what Launcher sorts Alt+Tab by. The task infos come
+     * fresh from the system for this call, so changing them affects nobody else.
+     */
+    private List<RecentTaskInfo> orderDeskTasksByLastFocus(DesktopTaskFocusHistory history,
+            List<RecentTaskInfo> tasks) {
+        tasks.stream().filter(this::isActiveDeskTask).forEach(task -> task.lastActiveTime =
+                history.getLastFocusedTime(task.taskId, task.lastActiveTime));
+        return history.orderDeskTasks(tasks, this::isActiveDeskTask,
+                task -> task.lastActiveTime);
+    }
+
+    private boolean isActiveDeskTask(TaskInfo taskInfo) {
+        return mDesktopState.canEnterDesktopMode()
+                && mDesktopUserRepositories.isPresent()
+                && mDesktopUserRepositories.get().getCurrent().isActiveTask(taskInfo.taskId);
     }
 
     /**

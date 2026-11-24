@@ -36,6 +36,7 @@ import android.view.WindowInsetsController.APPEARANCE_TRANSPARENT_CAPTION_BAR_BA
 import android.view.WindowManager.LayoutParams
 import com.android.internal.jank.InteractionJankMonitor
 import com.android.testing.wm.util.StubTransaction
+import com.android.wm.shell.RootTaskDisplayAreaOrganizer
 import com.android.wm.shell.ShellTaskOrganizer
 import com.android.wm.shell.common.DisplayController
 import com.android.wm.shell.common.MultiDisplayDragMoveIndicatorController
@@ -138,6 +139,7 @@ object WindowDecorationTestHelper {
         windowDecorationExclusionTracker: WindowDecorationGestureExclusionTracker = mock(),
         pinnedLayerController: PinnedLayerController = mock(),
         recentsTransitionStateListener: PerDisplayRecentsTransitionStateListener = mock(),
+        rootTaskDisplayAreaOrganizer: RootTaskDisplayAreaOrganizer = mock(),
     ): TestWindowDecoration {
         val viewHostSupplier = TestWindowDecorViewHostSupplier(scope)
         val decoration =
@@ -161,7 +163,7 @@ object WindowDecorationTestHelper {
                 transitions = mock(),
                 choreographer = mock(),
                 syncQueue = mock(),
-                rootTaskDisplayAreaOrganizer = mock(),
+                rootTaskDisplayAreaOrganizer = rootTaskDisplayAreaOrganizer,
                 windowDecorViewHostSupplier = viewHostSupplier,
                 multiInstanceHelper = mock(),
                 windowDecorCaptionRepository = mock(),

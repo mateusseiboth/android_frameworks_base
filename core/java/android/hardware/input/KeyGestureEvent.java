@@ -145,6 +145,8 @@ public final class KeyGestureEvent {
     public static final int KEY_GESTURE_TYPE_TOGGLE_TOP_ROW_ACCESSIBILITY_KEY = 88;
     public static final int KEY_GESTURE_TYPE_CONTEXTUAL_INPUT = 89;
     public static final int KEY_GESTURE_TYPE_LAUNCH_CONTEXTUAL_CURSOR= 90;
+    public static final int KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_PREVIOUS_DESK = 91;
+    public static final int KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_NEXT_DESK = 92;
 
     public static final int FLAG_CANCELLED = 1 << 0;
     public static final int FLAG_LONG_PRESS = 1 << 1;
@@ -249,6 +251,8 @@ public final class KeyGestureEvent {
             KEY_GESTURE_TYPE_TOGGLE_TOP_ROW_ACCESSIBILITY_KEY,
             KEY_GESTURE_TYPE_CONTEXTUAL_INPUT,
             KEY_GESTURE_TYPE_LAUNCH_CONTEXTUAL_CURSOR,
+            KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_PREVIOUS_DESK,
+            KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_NEXT_DESK,
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface KeyGestureType {
@@ -871,6 +875,10 @@ public final class KeyGestureEvent {
                 return "KEY_GESTURE_TYPE_CONTEXTUAL_INPUT";
             case KEY_GESTURE_TYPE_LAUNCH_CONTEXTUAL_CURSOR:
                 return "KEY_GESTURE_TYPE_LAUNCH_CONTEXTUAL_CURSOR";
+            case KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_PREVIOUS_DESK:
+                return "KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_PREVIOUS_DESK";
+            case KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_NEXT_DESK:
+                return "KEY_GESTURE_TYPE_MOVE_FOCUSED_TASK_TO_NEXT_DESK";
             default:
                 return Integer.toHexString(value);
         }

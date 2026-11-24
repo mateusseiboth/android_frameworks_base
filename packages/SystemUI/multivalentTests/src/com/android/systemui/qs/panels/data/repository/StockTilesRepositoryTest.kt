@@ -65,4 +65,14 @@ class StockTilesRepositoryTest : SysuiTestCase() {
                 .map(TileSpec::create)
         assertThat(underTest.stockTiles).isEqualTo(expected)
     }
+
+    @Test
+    fun stockTiles_extraStockTilesConfig_appendsTheirSpecs() {
+        mContext
+            .getOrCreateTestableResources()
+            .addOverride(R.string.config_quickSettingsExtraStockTiles, "ime")
+        val underTest = StockTilesRepository(kosmos.mainResources)
+
+        assertThat(underTest.stockTiles.last()).isEqualTo(TileSpec.create("ime"))
+    }
 }

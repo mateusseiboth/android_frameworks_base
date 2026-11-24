@@ -116,6 +116,8 @@ constructor(
         return dialog
     }
 
+    override fun shouldStashTaskbar(dialog: SystemUIDialog): Boolean = false
+
     override fun onCreate(dialog: SystemUIDialog, savedInstanceState: Bundle?) {
         mContext = dialog.context
         mDialogView = LayoutInflater.from(mContext).inflate(R.layout.media_output_dialog, null)

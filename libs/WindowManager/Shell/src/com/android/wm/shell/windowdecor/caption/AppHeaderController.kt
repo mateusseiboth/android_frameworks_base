@@ -49,6 +49,7 @@ import com.android.wm.shell.desktopmode.DesktopModeUiEventLogger
 import com.android.wm.shell.desktopmode.DesktopModeUiEventLogger.DesktopUiEventEnum
 import com.android.wm.shell.desktopmode.DesktopUserRepositories
 import com.android.wm.shell.desktopmode.WindowDecorCaptionRepository
+import com.android.wm.shell.desktopmode.buildDesktopFullImmersivePolicy
 import com.android.wm.shell.desktopmode.isTaskMaximized
 import com.android.wm.shell.shared.FocusTransitionListener
 import com.android.wm.shell.shared.annotations.ShellBackgroundThread
@@ -178,6 +179,7 @@ class AppHeaderController(
 
     private val closeLayoutMenuRunnable = Runnable { closeLayoutMenu() }
     private val dimensions = LargeHeaderDimensions(decorWindowContext.resources)
+    private val fullImmersivePolicy = buildDesktopFullImmersivePolicy(decorWindowContext)
 
     private var isLayoutMenuHovered = false
     private var isAppHeaderMaximizeButtonHovered = false
@@ -240,6 +242,7 @@ class AppHeaderController(
             updateLayoutMenu(startT)
 
             updateViewHolder(params.hasGlobalFocus)
+            reloadAppInfoIfStale()
 
             notifyCaptionStateChanged()
             return captionLayout
@@ -361,7 +364,10 @@ class AppHeaderController(
                 .apply {
                     show(
                         isTaskInImmersiveMode = inFullImmersive,
-                        showImmersiveOption = taskInfo.requestingImmersive,
+                        showImmersiveOption =
+                            fullImmersivePolicy.shouldOfferImmersiveOption(
+                                taskInfo.requestingImmersive
+                            ),
                         showSnapOptions = taskInfo.isResizeable,
                         onHoverListener = { hovered: Boolean ->
                             isLayoutMenuHovered = hovered
@@ -629,6 +635,13 @@ class AppHeaderController(
                 decorThemeUtilFactory = decorThemeUtilFactory,
             )
 
+        loadAppInfo()
+        viewHolder = appHeaderViewHolder
+        return appHeaderViewHolder
+    }
+
+    private fun loadAppInfo() {
+        loadAppInfoJob?.cancel()
         loadAppInfoJob =
             mainScope.launch {
                 val (name, icon) = taskResourceLoader.getNameAndHeaderIcon(taskInfo)
@@ -636,8 +649,12 @@ class AppHeaderController(
                 viewHolder.setAppIcon(icon)
                 notifyCaptionStateChanged()
             }
-        viewHolder = appHeaderViewHolder
-        return appHeaderViewHolder
+    }
+
+    /** Shows the new name and icon of an app that changed its task description. */
+    private fun reloadAppInfoIfStale() {
+        if (!taskResourceLoader.isNameAndHeaderIconStale(taskInfo)) return
+        loadAppInfo()
     }
 
     /** Returns the valid drag area for a task based on elements in the app chip. */

@@ -24,9 +24,12 @@ import android.view.WindowManager.TRANSIT_CHANGE
 import android.window.WindowContainerTransaction
 import com.android.internal.protolog.ProtoLog
 import com.android.window.flags.Flags
+import com.android.wm.shell.R as ShellR
 import com.android.wm.shell.ShellTaskOrganizer
 import com.android.wm.shell.common.DisplayController
 import com.android.wm.shell.common.DisplayLayout
+import com.android.wm.shell.common.TaskStackListenerCallback
+import com.android.wm.shell.common.TaskStackListenerImpl
 import com.android.wm.shell.desktopmode.DesktopUserRepositories
 import com.android.wm.shell.desktopmode.desktopwallpaperactivity.DesktopWallpaperActivityTokenProvider
 import com.android.wm.shell.desktopmode.desktopwallpaperactivity.DesktopWallpaperActivityUtils
@@ -57,7 +60,26 @@ class DesktopHomeScreenPeekController(
     private val shellTaskOrganizer: ShellTaskOrganizer,
     private val desktopWallpaperActivityUtils: DesktopWallpaperActivityUtils,
     private val desktopWallpaperActivityTokenProvider: DesktopWallpaperActivityTokenProvider,
+    taskStackListener: TaskStackListenerImpl? = null,
 ) {
+    /** Whether Home takes the input focus while peeked, see config_focusHomeWhilePeeking. */
+    private val focusesHomeWhilePeeking =
+        context.resources.getBoolean(ShellR.bool.config_focusHomeWhilePeeking)
+
+    private val peekHomeFocus = PeekHomeFocus()
+
+    init {
+        if (focusesHomeWhilePeeking) {
+            taskStackListener?.addListener(
+                object : TaskStackListenerCallback {
+                    override fun onTaskMovedToFront(taskInfo: ActivityManager.RunningTaskInfo) {
+                        onTaskMovedToFrontWhilePeeking(taskInfo.taskId)
+                    }
+                }
+            )
+        }
+    }
+
     private val peekAmount =
         context.resources.getDimensionPixelSize(
             R.dimen.desktop_home_screen_peeking_visible_peek_amount
@@ -98,9 +120,55 @@ class DesktopHomeScreenPeekController(
                 task.taskId to Rect(task.configuration.windowConfiguration.bounds)
             }
         hideDesktopWallpaperActivityIfExists(wct)
+        addHomeFocusChangesIfNeeded(wct, desktopTasks)
         peekTransitionHandler.startTransition(wct) {
             ProtoLog.v(WM_SHELL_DESKTOP_MODE, "%s: peek transition completed", TAG)
         }
+    }
+
+    /** Makes the peeked tasks unfocusable so the input focus moves to Home. */
+    private fun addHomeFocusChangesIfNeeded(
+        wct: WindowContainerTransaction,
+        desktopTasks: List<ActivityManager.RunningTaskInfo>,
+    ) {
+        if (!focusesHomeWhilePeeking) return
+        desktopTasks.forEach { task -> wct.setFocusable(task.token, false) }
+        peekHomeFocus.onPeek(desktopTasks.map { it.taskId })
+    }
+
+    /**
+     * Makes the peeked tasks focusable again and moves them back on top, keeping their stacking, so
+     * the top one (or [frontTaskId]) takes the focus back from Home.
+     */
+    private fun addFocusRestoreChanges(
+        wct: WindowContainerTransaction,
+        desktopTasks: List<ActivityManager.RunningTaskInfo>,
+        frontTaskId: Int?,
+    ) {
+        peekHomeFocus.takeTasksToRestore().forEach { taskId ->
+            shellTaskOrganizer.getRunningTaskInfo(taskId)?.let { wct.setFocusable(it.token, true) }
+        }
+        val tasksById = desktopTasks.associateBy { it.taskId }
+        PeekHomeFocus.buildReorderOrder(desktopTasks.map { it.taskId }, frontTaskId).forEach {
+            taskId ->
+            tasksById[taskId]?.let { wct.reorder(it.token, true) }
+        }
+    }
+
+    /** Ends the peek when the user brings one of the peeked tasks to front. */
+    private fun onTaskMovedToFrontWhilePeeking(taskId: Int) {
+        if (!isPeeking || !peekHomeFocus.shouldUnpeekOnTaskToFront(taskId)) return
+        ProtoLog.d(WM_SHELL_DESKTOP_MODE, "%s: task %d moved to front, unpeeking", TAG, taskId)
+        unpeek(frontTaskId = taskId)
+    }
+
+    /** Ends a peek whose tasks all left the desk, giving the tracked tasks their focus back. */
+    private fun endPeekWithoutVisibleTasks() {
+        val wct = WindowContainerTransaction()
+        addFocusRestoreChanges(wct, desktopTasks = emptyList(), frontTaskId = null)
+        if (!wct.isEmpty) shellTaskOrganizer.applyTransaction(wct)
+        isPeeking = false
+        taskBoundsBeforePeek = null
     }
 
     /**
@@ -109,7 +177,8 @@ class DesktopHomeScreenPeekController(
      * This method restores the bounds of all desktop tasks to their state before the peek was
      * initiated. If the controller is not currently in a peeked state, this method does nothing.
      */
-    fun unpeek() {
+    @JvmOverloads
+    fun unpeek(frontTaskId: Int? = null) {
         if (!isPeeking) {
             ProtoLog.w(WM_SHELL_DESKTOP_MODE, "%s: Unable to unpeek. Not currently peeking.", TAG)
             return
@@ -117,6 +186,7 @@ class DesktopHomeScreenPeekController(
         val desktopTasks = getVisibleDesktopTasks()
         if (desktopTasks.isEmpty()) {
             ProtoLog.d(WM_SHELL_DESKTOP_MODE, "%s: not unpeeking. No visible desktop tasks", TAG)
+            if (focusesHomeWhilePeeking) endPeekWithoutVisibleTasks()
             return
         }
         ProtoLog.d(WM_SHELL_DESKTOP_MODE, "%s: unpeek requested", TAG)
@@ -133,9 +203,10 @@ class DesktopHomeScreenPeekController(
                 )
             } else {
                 wct.setBounds(task.token, restoreBounds)
-                wct.reorder(task.token, true)
+                if (!focusesHomeWhilePeeking) wct.reorder(task.token, true)
             }
         }
+        if (focusesHomeWhilePeeking) addFocusRestoreChanges(wct, desktopTasks, frontTaskId)
         restoreDesktopWallpaperActivityIfExists(wct)
         peekTransitionHandler.startTransition(wct) {
             isPeeking = false

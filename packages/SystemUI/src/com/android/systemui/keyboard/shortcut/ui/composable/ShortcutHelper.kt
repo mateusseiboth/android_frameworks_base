@@ -34,6 +34,8 @@ fun ShortcutHelper(
     useSinglePane: @Composable () -> Boolean = { shouldUseSinglePane() },
     onShortcutCustomizationRequested: (ShortcutCustomizationRequestInfo) -> Unit = {},
     onCustomizationModeToggled: (Boolean) -> Unit = {},
+    dualPaneLayout: ShortcutHelperDualPaneLayout = ShortcutHelperDualPaneLayout.BottomSheet,
+    onCloseClicked: () -> Unit = {},
 ) {
     when (shortcutsUiState) {
         is ShortcutsUiState.Active -> {
@@ -45,6 +47,8 @@ fun ShortcutHelper(
                 modifier,
                 onKeyboardSettingsClicked,
                 onShortcutCustomizationRequested,
+                dualPaneLayout,
+                onCloseClicked,
             )
         }
 
@@ -63,6 +67,8 @@ private fun ActiveShortcutHelper(
     modifier: Modifier,
     onKeyboardSettingsClicked: () -> Unit,
     onShortcutCustomizationRequested: (ShortcutCustomizationRequestInfo) -> Unit = {},
+    dualPaneLayout: ShortcutHelperDualPaneLayout = ShortcutHelperDualPaneLayout.BottomSheet,
+    onCloseClicked: () -> Unit = {},
 ) {
     var selectedCategoryType by
         remember(shortcutsUiState.defaultSelectedCategory) {
@@ -87,6 +93,8 @@ private fun ActiveShortcutHelper(
             shortcutsUiState,
             modifier,
             onShortcutCustomizationRequested,
+            layout = dualPaneLayout,
+            onCloseClicked = onCloseClicked,
         )
     }
 }

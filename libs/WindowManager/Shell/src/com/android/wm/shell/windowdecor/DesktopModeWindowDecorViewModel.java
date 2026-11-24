@@ -87,6 +87,7 @@ import com.android.internal.policy.DesktopModeCompatPolicy;
 import com.android.internal.protolog.ProtoLog;
 import com.android.internal.util.LatencyTracker;
 import com.android.window.flags.Flags;
+import com.android.wm.shell.R;
 import com.android.wm.shell.RootTaskDisplayAreaOrganizer;
 import com.android.wm.shell.ShellTaskOrganizer;
 import com.android.wm.shell.apptoweb.AppToWebGenericLinksParser;
@@ -543,6 +544,7 @@ public class DesktopModeWindowDecorViewModel implements WindowDecorViewModel,
         mTaskResourceLoader = taskResourceLoader;
         mDesktopModeCompatPolicy = desktopModeCompatPolicy;
         mDesktopTilingDecorViewModel = desktopTilingDecorViewModel;
+        mDesktopTilingDecorViewModel.setTilingRestoreListener(this::restoreTiling);
         // TODO(b/467367552): Remove handling dependency in Dagger.
         snapController.start(this);
         mMultiDisplayDragMoveIndicatorController = multiDisplayDragMoveIndicatorController;
@@ -705,6 +707,23 @@ public class DesktopModeWindowDecorViewModel implements WindowDecorViewModel,
                     mGestureExclusionTracker.getExclusionRegion(taskInfo.displayId),
                     /* inSyncWithTransition= */ true, taskSurface);
         }
+    }
+
+    /**
+     * Reveals only the fullscreen header of the task under the pointer while it hovers the status
+     * bar of a display at {@code x} (see {@link StatusBarHoverHeaderReveal}), when
+     * config_fullscreenHeaderFollowsStatusBarHover is set.
+     */
+    public void onStatusBarHoverChanged(int displayId, boolean isHovering, float x) {
+        if (!mContext.getResources().getBoolean(
+                R.bool.config_fullscreenHeaderFollowsStatusBarHover)) {
+            return;
+        }
+        final Float hoverX = isHovering ? x : null;
+        forAllWindowDecorations(decoration -> {
+            if (decoration.getTaskInfo().displayId != displayId) return;
+            decoration.onStatusBarHoverChanged(hoverX);
+        });
     }
 
     @Override
@@ -1118,6 +1137,16 @@ public class DesktopModeWindowDecorViewModel implements WindowDecorViewModel,
     @Override
     public @NonNull Rect getDividerBounds(int deskId) {
         return mDesktopTilingDecorViewModel.getDividerBounds(deskId);
+    }
+
+    /** Tiles a restored window back into the half it was minimized from. */
+    private void restoreTiling(@NonNull RunningTaskInfo taskInfo, @NonNull SnapPosition position) {
+        final WindowDecorationWrapper decor = mWindowDecorByTaskId.get(taskInfo.taskId);
+        if (decor == null) return;
+        final RunningTaskInfo decorTaskInfo = decor.getTaskInfo();
+        final Rect currentBounds = decorTaskInfo.configuration.windowConfiguration.getBounds();
+        mDesktopTilingDecorViewModel.snapToHalfScreen(decorTaskInfo, decor, position,
+                currentBounds, null);
     }
 
     @Override

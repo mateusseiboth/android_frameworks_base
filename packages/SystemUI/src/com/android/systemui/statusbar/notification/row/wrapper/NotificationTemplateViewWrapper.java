@@ -43,6 +43,7 @@ import com.android.internal.util.ContrastColorUtil;
 import com.android.internal.widget.NotificationActionListLayout;
 import com.android.systemui.Dependency;
 import com.android.systemui.UiOffloadThread;
+import com.android.systemui.common.ui.view.MaterialFocusRings;
 import com.android.systemui.res.R;
 import com.android.systemui.statusbar.CrossFadeHelper;
 import com.android.systemui.statusbar.TransformableView;
@@ -184,6 +185,7 @@ public class NotificationTemplateViewWrapper extends NotificationHeaderViewWrapp
         mSmartReplyContainer = mView.findViewById(com.android.internal.R.id.smart_reply_container);
         mActionsContainer = mView.findViewById(com.android.internal.R.id.actions_container);
         mActions = mView.findViewById(com.android.internal.R.id.actions);
+        MaterialFocusRings.applyToNotificationActions(mActions);
         mRemoteInputHistory = mView.findViewById(
                 com.android.internal.R.id.notification_material_reply_container);
 

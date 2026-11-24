@@ -21,13 +21,19 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+import android.content.res.Configuration
+import android.os.Bundle
 import android.os.UserHandle
 import android.provider.Settings
 import android.util.Log
+import android.view.Gravity
+import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.annotation.VisibleForTesting
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -39,6 +45,7 @@ import com.android.systemui.display.dagger.SystemUIDisplaySubcomponent.Lifecycle
 import com.android.systemui.display.dagger.SystemUIDisplaySubcomponent.PerDisplaySingleton
 import com.android.systemui.keyboard.shortcut.ui.composable.ShortcutHelper
 import com.android.systemui.keyboard.shortcut.ui.composable.ShortcutHelperBottomSheet
+import com.android.systemui.keyboard.shortcut.ui.composable.ShortcutHelperDualPaneLayout
 import com.android.systemui.keyboard.shortcut.ui.composable.getWidth
 import com.android.systemui.keyboard.shortcut.ui.composable.hasExpandedWindowHeight
 import com.android.systemui.keyboard.shortcut.ui.viewmodel.ShortcutHelperViewModel
@@ -47,7 +54,10 @@ import com.android.systemui.plugins.ActivityStarter
 import com.android.systemui.common.ui.compose.SelectedUserAwareInputConnection
 import com.android.systemui.res.R
 import com.android.systemui.settings.UserTracker
+import com.android.systemui.statusbar.phone.DialogDelegate
+import com.android.systemui.statusbar.phone.SystemUIDialog
 import com.android.systemui.statusbar.phone.SystemUIDialogFactory
+import com.android.systemui.statusbar.phone.create
 import com.android.systemui.statusbar.phone.createBottomSheet
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
@@ -88,40 +98,89 @@ constructor(
     }
 
     private fun createShortcutHelperDialog(): Dialog {
-        return dialogFactory.createBottomSheet(
+        val dialog =
+            when (val presentation = findPresentation()) {
+                is ShortcutHelperPresentation.BottomSheet -> createBottomSheetDialog()
+                is ShortcutHelperPresentation.Dialog -> createSidebarDialog(presentation.widthDp)
+            }
+        dialog.window?.clearFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
+        return dialog
+    }
+
+    private fun findPresentation(): ShortcutHelperPresentation {
+        val resources = displayContext.resources
+        val configuration = resources.configuration
+        return ShortcutHelperPresentation.find(
+            isDialogEnabled = resources.getBoolean(R.bool.config_shortcutHelperAsDialog),
+            screenWidthDp = configuration.screenWidthDp,
+            screenHeightDp = configuration.screenHeightDp,
+            isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
+        )
+    }
+
+    private fun createBottomSheetDialog(): Dialog =
+        dialogFactory.createBottomSheet(
+            // The taskbar stays usable while the shortcuts are listed.
+            shouldStashTaskbar = false,
             content = { dialog ->
-                val shortcutsUiState by
-                    shortcutHelperViewModel.shortcutsUiState.collectAsStateWithLifecycle()
-                val shortcutCustomizationDialogStarter =
-                    rememberActivated(traceName = "shortcutCustomizationDialogStarter") {
-                        shortcutCustomizationDialogStarterFactory.create(displayContext)
-                    }
-                SelectedUserAwareInputConnection(selectedUserId = userTracker.userId) {
-                    ShortcutHelper(
-                        modifier =
-                            Modifier.width(getWidth()).thenIf(hasExpandedWindowHeight()) {
-                                Modifier.fillMaxHeight(0.72f)
-                            },
-                        shortcutsUiState = shortcutsUiState,
-                        onKeyboardSettingsClicked = { onKeyboardSettingsClicked(dialog) },
-                        onSearchQueryChanged = { shortcutHelperViewModel.onSearchQueryChanged(it) },
-                        onShortcutCustomizationRequested = {
-                            shortcutCustomizationDialogStarter.onShortcutCustomizationRequested(it)
+                ShortcutHelperContent(
+                    dialog = dialog,
+                    modifier =
+                        Modifier.width(getWidth()).thenIf(hasExpandedWindowHeight()) {
+                            Modifier.fillMaxHeight(0.72f)
                         },
-                        onCustomizationModeToggled = { isCustomizing ->
-                            shortcutHelperViewModel.toggleCustomizationMode(isCustomizing)
-                        },
-                    )
-                }
-                dialog.setOnDismissListener { shortcutHelperViewModel.onViewClosed() }
-                dialog.setTitle(stringResource(R.string.shortcut_helper_title))
+                    dualPaneLayout = ShortcutHelperDualPaneLayout.BottomSheet,
+                )
             },
             maxWidth = ShortcutHelperBottomSheet.LargeScreenWidthLandscape,
             context = displayContext,
-        ).apply {
-            val window = window ?: return@apply
-            window.clearFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
+        )
+
+    private fun createSidebarDialog(widthDp: Int): Dialog =
+        dialogFactory.create(
+            context = displayContext,
+            dialogDelegate = SidebarDialogDelegate(widthDp),
+        ) { dialog ->
+            ShortcutHelperContent(
+                dialog = dialog,
+                modifier =
+                    Modifier.fillMaxWidth().thenIf(hasExpandedWindowHeight()) {
+                        Modifier.fillMaxHeight(0.83f)
+                    },
+                dualPaneLayout = ShortcutHelperDualPaneLayout.Dialog,
+            )
         }
+
+    @Composable
+    private fun ShortcutHelperContent(
+        dialog: Dialog,
+        modifier: Modifier,
+        dualPaneLayout: ShortcutHelperDualPaneLayout,
+    ) {
+        val shortcutsUiState by
+            shortcutHelperViewModel.shortcutsUiState.collectAsStateWithLifecycle()
+        val shortcutCustomizationDialogStarter =
+            rememberActivated(traceName = "shortcutCustomizationDialogStarter") {
+                shortcutCustomizationDialogStarterFactory.create(displayContext)
+            }
+        SelectedUserAwareInputConnection(selectedUserId = userTracker.userId) {
+            ShortcutHelper(
+                modifier = modifier,
+                shortcutsUiState = shortcutsUiState,
+                onKeyboardSettingsClicked = { onKeyboardSettingsClicked(dialog) },
+                onSearchQueryChanged = { shortcutHelperViewModel.onSearchQueryChanged(it) },
+                onShortcutCustomizationRequested = {
+                    shortcutCustomizationDialogStarter.onShortcutCustomizationRequested(it)
+                },
+                onCustomizationModeToggled = { isCustomizing ->
+                    shortcutHelperViewModel.toggleCustomizationMode(isCustomizing)
+                },
+                dualPaneLayout = dualPaneLayout,
+                onCloseClicked = { dialog.dismiss() },
+            )
+        }
+        dialog.setOnDismissListener { shortcutHelperViewModel.onViewClosed() }
+        dialog.setTitle(stringResource(R.string.shortcut_helper_title))
     }
 
     private fun onKeyboardSettingsClicked(dialog: Dialog) {
@@ -141,4 +200,19 @@ constructor(
         }
         dialog.dismiss()
     }
+}
+
+/** Sizes the shortcut helper dialog and keeps it horizontally centered at the bottom. */
+private class SidebarDialogDelegate(private val widthDp: Int) : DialogDelegate<SystemUIDialog> {
+    override fun onCreate(dialog: SystemUIDialog, savedInstanceState: Bundle?) {
+        dialog.window?.setGravity(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+    }
+
+    override fun getWidth(dialog: SystemUIDialog): Int =
+        SystemUIDialog.calculateDialogWidthWithInsets(dialog, widthDp)
+
+    override fun getHeight(dialog: SystemUIDialog): Int = ViewGroup.LayoutParams.WRAP_CONTENT
+
+    // The taskbar stays usable while the shortcuts are listed.
+    override fun shouldStashTaskbar(dialog: SystemUIDialog): Boolean = false
 }

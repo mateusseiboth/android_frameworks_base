@@ -63,4 +63,10 @@ interface DialogDelegate<T : Dialog> {
     fun dispatchTouchEvent(dialog: T, motionEvent: MotionEvent): Boolean = false
 
     fun onTouchEvent(dialog: T, motionEvent: MotionEvent): Boolean = false
+
+    /**
+     * Whether the taskbar of the dialog's display stashes while the dialog shows. Dialogs that
+     * leave the taskbar usable, like popups anchored to the status bar, return false.
+     */
+    fun shouldStashTaskbar(dialog: T): Boolean = true
 }

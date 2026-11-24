@@ -153,6 +153,109 @@ class WindowDecorTaskResourceLoaderTest : ShellTestCase() {
     }
 
     @Test
+    fun testGetNameAndHeaderIcon_activityWithItsOwnLabel_usesTheBaseIntentLabel() = runTest {
+        val task = createTaskInfo(context.userId)
+        task.topActivityInfo!!.nonLocalizedLabel = "Inbox"
+        loader.onWindowDecorCreated(task)
+
+        val result = loader.getNameAndHeaderIcon(task)
+        advanceUntilIdle()
+
+        assertThat(result.first.toString()).isEqualTo("Inbox")
+        assertThat(loader.taskToResourceCache[task.taskId]?.appName.toString()).isEqualTo("Inbox")
+    }
+
+    @Test
+    fun testGetNameAndHeaderIcon_activityWithoutALabel_usesTheAppLabel() = runTest {
+        val task = createTaskInfo(context.userId)
+        loader.onWindowDecorCreated(task)
+
+        val result = loader.getNameAndHeaderIcon(task)
+        advanceUntilIdle()
+
+        assertThat(result.first).isEqualTo("Test App")
+    }
+
+    @Test
+    fun testGetNameAndHeaderIcon_followingTaskDescription_usesItsLabel() = runTest {
+        val followingLoader = createLoaderFollowingTaskDescriptions()
+        val task = createTaskInfo(context.userId)
+        task.taskDescription = ActivityManager.TaskDescription("Inbox (3)")
+        followingLoader.onWindowDecorCreated(task)
+
+        val result = followingLoader.getNameAndHeaderIcon(task)
+        advanceUntilIdle()
+
+        assertThat(result.first.toString()).isEqualTo("Inbox (3)")
+    }
+
+    @Test
+    fun testGetNameAndHeaderIcon_taskDescriptionNotFollowed_ignoresItsLabel() = runTest {
+        val task = createTaskInfo(context.userId)
+        task.taskDescription = ActivityManager.TaskDescription("Inbox (3)")
+        loader.onWindowDecorCreated(task)
+
+        val result = loader.getNameAndHeaderIcon(task)
+        advanceUntilIdle()
+
+        assertThat(result.first).isEqualTo("Test App")
+        assertThat(loader.isNameAndHeaderIconStale(task)).isFalse()
+    }
+
+    @Test
+    fun testGetNameAndHeaderIcon_taskDescriptionLabelChanged_reloads() = runTest {
+        val followingLoader = createLoaderFollowingTaskDescriptions()
+        val task = createTaskInfo(context.userId)
+        task.taskDescription = ActivityManager.TaskDescription("Inbox (3)")
+        followingLoader.onWindowDecorCreated(task)
+        followingLoader.getNameAndHeaderIcon(task)
+        advanceUntilIdle()
+
+        task.taskDescription = ActivityManager.TaskDescription("Inbox (4)")
+
+        assertThat(followingLoader.isNameAndHeaderIconStale(task)).isTrue()
+        val result = followingLoader.getNameAndHeaderIcon(task)
+        advanceUntilIdle()
+        assertThat(result.first.toString()).isEqualTo("Inbox (4)")
+        assertThat(followingLoader.isNameAndHeaderIconStale(task)).isFalse()
+    }
+
+    @Test
+    fun testIsNameAndHeaderIconStale_sameTaskDescription_isFalse() = runTest {
+        val followingLoader = createLoaderFollowingTaskDescriptions()
+        val task = createTaskInfo(context.userId)
+        task.taskDescription = ActivityManager.TaskDescription("Inbox (3)")
+        followingLoader.onWindowDecorCreated(task)
+        followingLoader.getNameAndHeaderIcon(task)
+        advanceUntilIdle()
+
+        task.taskDescription = ActivityManager.TaskDescription("Inbox (3)")
+
+        assertThat(followingLoader.isNameAndHeaderIconStale(task)).isFalse()
+    }
+
+    private fun createLoaderFollowingTaskDescriptions(): WindowDecorTaskResourceLoaderImpl =
+        WindowDecorTaskResourceLoaderImpl(
+                shellInit = shellInit,
+                shellController = mockShellController,
+                mainHandler = mockHandler,
+                mainScope = testScope,
+                mainImmediateDispatcher = testDispatcher,
+                bgDispatcher = testDispatcher,
+                shellCommandHandler = mock(),
+                userProfilesContexts = mMockUserProfileContexts,
+                iconProvider = mockIconProvider,
+                headerIconFactory = mockHeaderIconFactory,
+                veilIconFactory = mockVeilIconFactory,
+                taskDescriptionRule =
+                    TaskDescriptionHeaderRule(isEnabled = true, packageAllowlist = emptySet()),
+            )
+            .also {
+                shellInit.init()
+                testExecutor.flushAll()
+            }
+
+    @Test
     fun testGetNameAndHeaderIcon_cached_returnsFromCache() = runTest {
         val task = createTaskInfo(context.userId)
         task.configuration.setLocales(LocaleList(Locale.US))

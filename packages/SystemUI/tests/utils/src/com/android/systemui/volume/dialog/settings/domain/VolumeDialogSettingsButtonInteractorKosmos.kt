@@ -21,6 +21,7 @@ import com.android.systemui.kosmos.applicationCoroutineScope
 import com.android.systemui.shade.domain.interactor.shadeInteractor
 import com.android.systemui.statusbar.policy.deviceProvisionedController
 import com.android.systemui.volume.dialog.domain.interactor.expandedAudioTileDetailsFeatureInteractor
+import com.android.systemui.volume.dialog.domain.interactor.volumeDialogHorizontalButtonsInteractor
 import com.android.systemui.volume.dialog.domain.interactor.volumeDialogVisibilityInteractor
 import com.android.systemui.volume.panel.domain.interactor.volumePanelGlobalStateInteractor
 
@@ -33,5 +34,6 @@ val Kosmos.volumeDialogSettingsButtonInteractor by
             volumeDialogVisibilityInteractor,
             shadeInteractor,
             expandedAudioTileDetailsFeatureInteractor,
+            volumeDialogHorizontalButtonsInteractor,
         )
     }

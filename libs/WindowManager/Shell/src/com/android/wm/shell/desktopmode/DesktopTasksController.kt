@@ -151,6 +151,7 @@ import com.android.wm.shell.desktopmode.multidesks.DeskTransition
 import com.android.wm.shell.desktopmode.multidesks.DesksController
 import com.android.wm.shell.desktopmode.multidesks.DesksOrganizer
 import com.android.wm.shell.desktopmode.multidesks.DesksTransitionObserver
+import com.android.wm.shell.desktopmode.multidesks.EmptyDeskKeeper
 import com.android.wm.shell.desktopmode.multidesks.OnDeskRemovedListener
 import com.android.wm.shell.desktopmode.multidesks.PreserveDisplayRequestHandler
 import com.android.wm.shell.draganddrop.DragAndDropController
@@ -318,6 +319,9 @@ class DesktopTasksController(
             rootTaskDisplayAreaOrganizer,
             keyguardManager,
             mainExecutor,
+            context,
+            displayController,
+            transitions,
         )
 
     private val mOnAnimationFinishedCallback = { releaseVisualIndicator() }
@@ -393,6 +397,25 @@ class DesktopTasksController(
 
     private val deskDeactivationFromOverviewScheduler =
         DeskDeactivationFromOverviewScheduler(shellController, this, displayController)
+
+    private val deskWindowOrderSync =
+        DeskWindowOrderSync(
+            isEnabled = context.resources.getBoolean(R.bool.config_preserveDesktopZOrderOnExit),
+            desksOrganizer = desksOrganizer,
+        )
+
+    /** See config_restoreTilingOnUnminimize. */
+    private val restoresTilingOnUnminimize =
+        context.resources.getBoolean(R.bool.config_restoreTilingOnUnminimize)
+
+    private val emptyDeskKeeper =
+        EmptyDeskKeeper(
+            isEnabled = context.resources.getBoolean(R.bool.config_keepEmptyDeskActiveShowingHome),
+            isHomeBehindDesktop = desktopState.shouldShowHomeBehindDesktop,
+            isDesktopFirst = { displayId ->
+                rootTaskDisplayAreaOrganizer.isDisplayDesktopFirst(displayId)
+            },
+        )
 
     init {
         if (desktopState.canEnterDesktopMode) {
@@ -1124,7 +1147,8 @@ class DesktopTasksController(
                 }
             }
         }
-        transitions.startTransition(TRANSIT_CHANGE, wct, null)
+        val transition = transitions.startTransition(TRANSIT_CHANGE, wct, null)
+        desktopScrimController.trackTransitionToUpdateScrim(transition)
     }
 
     private fun handleProjectedModeDisconnect(
@@ -1848,13 +1872,14 @@ class DesktopTasksController(
             return null
         }
         snapController.removeTaskIfTiled(displayId, taskId)
+        val keepsDesk = forceKeepDesktop || emptyDeskKeeper.shouldKeepOnLastWindowClose(displayId)
         val shouldExitDesktop =
             willExitDesktop(
                 triggerTaskId = taskId,
                 displayId = displayId,
                 userId = userId,
                 forceExitDesktop = false,
-            ) && !forceKeepDesktop
+            ) && !keepsDesk
         val desktopExitRunnable =
             if (shouldExitDesktop) {
                 val isLastTask =
@@ -1889,6 +1914,16 @@ class DesktopTasksController(
             immersiveRunnable?.invoke(transitionToken)
             desktopExitRunnable?.invoke(transitionToken)
         }
+    }
+
+    /** Remembers the half a tiled task was snapped to, to tile it back when it is restored. */
+    private fun rememberTiledSideOnMinimize(
+        repository: DesktopRepository,
+        deskId: Int,
+        taskId: Int,
+    ) {
+        if (!restoresTilingOnUnminimize) return
+        repository.rememberTiledSideOnMinimize(deskId, taskId)
     }
 
     /**
@@ -1931,6 +1966,7 @@ class DesktopTasksController(
                 deskId = checkNotNull(deskId) { "Expected non-null deskId" },
                 displayId = displayId,
             )
+        rememberTiledSideOnMinimize(repository, deskId, taskId)
         snapController.removeTaskIfTiled(displayId, taskId)
         val isMinimizingToPip =
             (taskInfo.pictureInPictureParams?.isAutoEnterEnabled ?: false) &&
@@ -5461,6 +5497,8 @@ class DesktopTasksController(
         )
         desksOrganizer.activateDesk(wct, deskId)
         desktopScrimController.updateDesktopScrimIfNeeded(displayId, userId, targetDeskId = deskId)
+        // Bring the windows back in the stacking order the desk was left with.
+        deskWindowOrderSync.applyWindowOrder(repository, deskId, displayId)
         val expandedTasksOrderedFrontToBack =
             repository.getExpandedTasksIdsInDeskOrdered(deskId = deskId)
         // If we're adding a new Task we might need to minimize an old one

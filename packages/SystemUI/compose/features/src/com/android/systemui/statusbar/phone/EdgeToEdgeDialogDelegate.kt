@@ -28,7 +28,8 @@ import com.android.systemui.animation.back.bottomSheetForSysUi
 class EdgeToEdgeDialogDelegate(
     private val touchEvent: (dialog: SystemUIDialog, event: MotionEvent) -> Boolean = { _, _ ->
         false
-    }
+    },
+    private val shouldStashTaskbar: Boolean = true,
 ) : DialogDelegate<SystemUIDialog> {
 
     override fun onCreate(dialog: SystemUIDialog, savedInstanceState: Bundle?) {
@@ -58,4 +59,6 @@ class EdgeToEdgeDialogDelegate(
     override fun onTouchEvent(dialog: SystemUIDialog, motionEvent: MotionEvent): Boolean {
         return touchEvent(dialog, motionEvent)
     }
+
+    override fun shouldStashTaskbar(dialog: SystemUIDialog): Boolean = shouldStashTaskbar
 }

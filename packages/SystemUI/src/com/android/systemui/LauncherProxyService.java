@@ -1018,6 +1018,19 @@ public class LauncherProxyService implements CallbackController<LauncherProxyLis
         }
     }
 
+    /**
+     * Asks the launcher to close the taskbar's All Apps and its floating views on the display.
+     */
+    public void closeLauncherFloatingViews(int displayId) {
+        try {
+            if (mLauncherProxy != null) {
+                mLauncherProxy.closeFloatingViews(displayId);
+            }
+        } catch (RemoteException e) {
+            Log.e(TAG_OPS, "Failed to call closeFloatingViews()", e);
+        }
+    }
+
     public void cleanupAfterDeath() {
         mIsPrevServiceCleanedUp = true;
         startConnectionToCurrentUser();

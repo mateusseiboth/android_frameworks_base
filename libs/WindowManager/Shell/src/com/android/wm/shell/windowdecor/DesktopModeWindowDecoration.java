@@ -97,6 +97,7 @@ import com.android.wm.shell.common.MultiInstanceHelper;
 import com.android.wm.shell.common.ShellExecutor;
 import com.android.wm.shell.common.SyncTransactionQueue;
 import com.android.wm.shell.desktopmode.CaptionState;
+import com.android.wm.shell.desktopmode.DesktopFullImmersivePolicyFactory;
 import com.android.wm.shell.desktopmode.DesktopModeEventLogger;
 import com.android.wm.shell.desktopmode.DesktopModeUiEventLogger;
 import com.android.wm.shell.desktopmode.DesktopModeUiEventLogger.DesktopUiEventEnum;
@@ -1518,7 +1519,9 @@ public class DesktopModeWindowDecoration extends WindowDecoration<WindowDecorLin
                 mDesktopUserRepositories.getProfile(mTaskInfo.userId)
                             .isTaskInFullImmersiveState(mTaskInfo.taskId),
                 /* showImmersiveOption= */
-                TaskInfoKt.getRequestingImmersive(mTaskInfo),
+                DesktopFullImmersivePolicyFactory.buildDesktopFullImmersivePolicy(
+                        mDecorWindowContext).shouldOfferImmersiveOption(
+                                TaskInfoKt.getRequestingImmersive(mTaskInfo)),
                 /* showSnapOptions= */ mTaskInfo.isResizeable,
                 hovered -> {
                     mIsLayoutMenuHovered = hovered;

@@ -1050,6 +1050,58 @@ class DesksTransitionObserverTest : ShellTestCase() {
 
     @Test
     @EnableFlags(Flags.FLAG_SKIP_DEACTIVATION_OF_DESK_WITH_NOTHING_IN_FRONT)
+    fun independentDeskTransition_emptyDeskToBackBehindHome_keepEmptyDesk_staysActive() =
+        testScope.runTest {
+            val keepingObserver =
+                DesksTransitionObserver(
+                    desktopUserRepositories = desktopUserRepositories,
+                    desksOrganizer = mockDesksOrganizer,
+                    transitions = mockTransitions,
+                    desktopWallpaperActivityTokenProvider =
+                        mockDesktopWallpaperActivityTokenProvider,
+                    mainScope = testScope.backgroundScope,
+                    desktopModeEventLogger = mockDesktopModeEventLogger,
+                    shellController = mockShellController,
+                    displayController = mockDisplayController,
+                    desktopHomeScreenPeekController = mockDesktopHomeScreenPeekController,
+                    emptyDeskKeeper =
+                        EmptyDeskKeeper(
+                            isEnabled = true,
+                            isHomeBehindDesktop = true,
+                            isDesktopFirst = { true },
+                        ),
+                )
+            val deskId = 5
+            val displayId = DEFAULT_DISPLAY
+            val repository = desktopUserRepositories.getProfile(USER_ID_1)
+            repository.addDesk(displayId, deskId)
+            repository.setActiveDesk(displayId, deskId)
+
+            keepingObserver.onTransitionReady(
+                transition = Binder(),
+                info =
+                    buildTransitionInfo()
+                        .addHomeChange(
+                            mode = TRANSIT_TO_FRONT,
+                            userId = repository.userId,
+                            displayId = displayId,
+                        )
+                        .addDeskChange(
+                            deskId = deskId,
+                            mode = TRANSIT_TO_BACK,
+                            userId = repository.userId,
+                            displayId = displayId,
+                        ),
+            )
+            runCurrent()
+
+            verify(mockDesksOrganizer).activateDesk(any(), deskId = eq(5), skipReorder = eq(false))
+            verify(mockDesksOrganizer, never()).deactivateDesk(any(), any(), any())
+            assertThat(repository.getActiveDeskId(displayId)).isEqualTo(deskId)
+        }
+
+    @Test
+    @EnableFlags(Flags.FLAG_SKIP_DEACTIVATION_OF_DESK_WITH_NOTHING_IN_FRONT)
     fun independentDeskTransition_deskToBack_deskWithNonCurrentUserId_deactivatesCurrentUserDesk() =
         testScope.runTest {
             val deskId = 5

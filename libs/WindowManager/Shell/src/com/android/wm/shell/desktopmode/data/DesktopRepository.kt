@@ -36,6 +36,7 @@ import com.android.internal.annotations.VisibleForTesting
 import com.android.internal.protolog.ProtoLog
 import com.android.window.flags.Flags
 import com.android.wm.shell.common.WorkSerializer
+import com.android.wm.shell.desktopmode.DeskZOrder
 import com.android.wm.shell.desktopmode.DisplayDeskState
 import com.android.wm.shell.desktopmode.data.persistence.DesktopPersistentRepository
 import com.android.wm.shell.protolog.ShellProtoLogGroup.WM_SHELL_DESKTOP_MODE
@@ -87,6 +88,12 @@ class DesktopRepository(
     private var desktopGestureExclusionExecutor: Executor? = null
 
     private val rememberedBoundsRatioByPackageName = ArrayMap<String, RectF>()
+
+    /* Tasks closed by back navigation that stay minimized in their desk. */
+    private val backClosedTasks = BackClosedTasks()
+
+    /* Sides that minimized tasks were tiled to, to tile them back when restored. */
+    private val minimizedTiledTasks = MinimizedTiledTasks()
 
     // TODO - b/365873835: Add this to persistent repository.
     private val preservedDisplaysByUniqueId = ArrayMap<String, DesktopDisplay>()
@@ -798,6 +805,47 @@ class DesktopRepository(
     fun getFreeformTasksIdsInDeskInZOrder(deskId: Int): ArrayList<Int> =
         ArrayList(desktopData.getDesk(deskId)?.freeformTasksInZOrder ?: emptyList())
 
+    /**
+     * Puts the running tasks of [deskId] in the stacking order the window manager reports for them
+     * ([liveTopFirst], top first); tasks that are not running keep their slot.
+     */
+    fun applyWindowOrderToDesk(deskId: Int, liveTopFirst: List<Int>) {
+        val desk = desktopData.getDesk(deskId) ?: return
+        val merged = DeskZOrder.mergeWindowOrder(desk.freeformTasksInZOrder, liveTopFirst)
+        if (merged == desk.freeformTasksInZOrder) return
+        logD(
+            "applyWindowOrderToDesk deskId=%d from %s to %s",
+            deskId,
+            desk.freeformTasksInZOrder.toDumpString(),
+            merged.toDumpString(),
+        )
+        desk.freeformTasksInZOrder.clear()
+        desk.freeformTasksInZOrder.addAll(merged)
+        if (!desk.transientDesk && DesktopModeFlags.ENABLE_DESKTOP_WINDOWING_PERSISTENCE.isTrue) {
+            updatePersistentRepository(desk.displayId)
+        }
+    }
+
+    /** Remembers the tiled side of [taskId] in [deskId], if it is tiled, as it gets minimized. */
+    fun rememberTiledSideOnMinimize(deskId: Int, taskId: Int) {
+        val desk = desktopData.getDesk(deskId) ?: return
+        minimizedTiledTasks.onMinimized(taskId, desk.leftTiledTaskId, desk.rightTiledTaskId)
+    }
+
+    /**
+     * Returns, once, the side [taskId] was tiled to before it got minimized, to tile it back as it
+     * is restored in [deskId]; null when it was not tiled or that side is taken.
+     */
+    fun takeTiledSideToRestore(deskId: Int, taskId: Int): MinimizedTiledTasks.TiledSide? {
+        if (!minimizedTiledTasks.contains(taskId)) return null
+        val desk = desktopData.getDesk(deskId) ?: return null
+        return minimizedTiledTasks.takeSideToRestore(
+            taskId,
+            desk.leftTiledTaskId,
+            desk.rightTiledTaskId,
+        )
+    }
+
     /** Returns the tasks inside the given desk. */
     fun getActiveTaskIdsInDesk(deskId: Int): Set<Int> =
         desktopData.getDesk(deskId)?.activeTasks?.toSet()
@@ -1055,6 +1103,18 @@ class DesktopRepository(
     }
 
     /**
+     * Keeps [taskId], which back navigation closed while minimizing it, in its desk: the next
+     * removal of the task, when it vanishes from the window hierarchy, is skipped.
+     */
+    fun addBackClosedTask(taskId: Int) {
+        logD("addBackClosedTask: taskId=%d", taskId)
+        backClosedTasks.add(taskId)
+    }
+
+    /** Returns true once if the removal of [taskId] must be skipped, see [addBackClosedTask]. */
+    fun takeRemovalSkip(taskId: Int): Boolean = backClosedTasks.takeRemovalSkip(taskId)
+
+    /**
      * Unminimizes the task for [taskId] and [displayId].
      *
      * TODO: b/389960283 - consider using [unminimizeTaskFromDesk] instead.
@@ -1065,6 +1125,7 @@ class DesktopRepository(
 
     private fun unminimizeTaskFromDesk(deskId: Int, taskId: Int) {
         logD("Unminimize Task from desk: deskId=%d, taskId=%d", deskId, taskId)
+        backClosedTasks.remove(taskId)
         if (desktopData.getDesk(deskId)?.minimizedTasks?.remove(taskId) != true) {
             logW("Unminimize Task: deskId=%d, taskId=%d, no task data", deskId, taskId)
         }
@@ -1106,6 +1167,7 @@ class DesktopRepository(
     /** Removes the given task from the given desk. */
     fun removeTaskFromDesk(deskId: Int, taskId: Int) {
         logD("removeTaskFromDesk: deskId=%d, taskId=%d", deskId, taskId)
+        minimizedTiledTasks.remove(taskId)
         // TODO: b/362720497 - consider not clearing bounds on any removal, such as when moving
         //  it between desks. It might be better to allow restoring to the previous bounds as long
         //  as they're valid (probably valid if in the same display).
@@ -1336,6 +1398,8 @@ class DesktopRepository(
         dumpDesktopTaskData(pw, innerPrefix)
         pw.println("${innerPrefix}activeTasksListeners=${activeTasksListeners.size}")
         pw.println("${innerPrefix}visibleTasksListeners=${visibleTasksListeners.size}")
+        pw.println("${innerPrefix}backClosedTasks=$backClosedTasks")
+        pw.println("${innerPrefix}minimizedTiledTasks=$minimizedTiledTasks")
         if (Flags.enableRememberedBounds()) {
             pw.println("${innerPrefix}rememberedBoundsRatioByPackageName:")
             rememberedBoundsRatioByPackageName.forEach { (packageName, bounds) ->

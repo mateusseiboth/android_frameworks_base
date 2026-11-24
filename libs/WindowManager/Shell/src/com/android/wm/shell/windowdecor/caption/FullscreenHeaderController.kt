@@ -49,6 +49,7 @@ import com.android.wm.shell.desktopmode.DesktopModeUiEventLogger
 import com.android.wm.shell.desktopmode.DesktopModeUiEventLogger.DesktopUiEventEnum
 import com.android.wm.shell.desktopmode.DesktopUserRepositories
 import com.android.wm.shell.desktopmode.WindowDecorCaptionRepository
+import com.android.wm.shell.desktopmode.buildDesktopFullImmersivePolicy
 import com.android.wm.shell.shared.FocusTransitionListener
 import com.android.wm.shell.shared.annotations.ShellBackgroundThread
 import com.android.wm.shell.shared.annotations.ShellMainThread
@@ -72,10 +73,12 @@ import com.android.wm.shell.windowdecor.WindowDecorLinearLayout
 import com.android.wm.shell.windowdecor.WindowDecoration2.RelayoutParams
 import com.android.wm.shell.windowdecor.WindowDecorationActions
 import com.android.wm.shell.windowdecor.WindowManagerWrapper
+import com.android.wm.shell.windowdecor.buildFullscreenHeaderRule
 import com.android.wm.shell.windowdecor.common.DecorThemeUtil
 import com.android.wm.shell.windowdecor.common.WindowDecorTaskResourceLoader
 import com.android.wm.shell.windowdecor.common.viewhost.WindowDecorViewHost
 import com.android.wm.shell.windowdecor.common.viewhost.WindowDecorViewHostSupplier
+import com.android.wm.shell.windowdecor.extension.isTransparentCaptionBarAppearance
 import com.android.wm.shell.windowdecor.extension.requestingImmersive
 import com.android.wm.shell.windowdecor.viewholder.FullscreenHeaderViewHolder
 import com.android.wm.shell.windowdecor.viewholder.FullscreenHeaderViewHolder.HeaderData
@@ -167,6 +170,16 @@ class FullscreenHeaderController(
 
     private val closeLayoutMenuRunnable = Runnable { closeLayoutMenu() }
     private val dimensions = LargeHeaderDimensions(decorWindowContext.resources)
+    private val fullImmersivePolicy = buildDesktopFullImmersivePolicy(decorWindowContext)
+    private val fullscreenHeaderRule = buildFullscreenHeaderRule(decorWindowContext)
+
+    /** Whether the app draws its own caption under this header, as in a desktop window. */
+    private val hasCustomHeader: Boolean
+        get() =
+            fullscreenHeaderRule.hasCustomHeader(
+                isFullscreenHeader = true,
+                isTransparentCaptionBar = taskInfo.isTransparentCaptionBarAppearance,
+            )
 
     private var isLayoutMenuHovered = false
     private var isFullscreenHeaderExitFullscreenButtonHovered = false
@@ -220,6 +233,7 @@ class FullscreenHeaderController(
             )
 
             updateViewHolder(params.hasGlobalFocus)
+            reloadAppInfoIfStale()
 
             if (!params.hasGlobalFocus) {
                 closeHandleMenu()
@@ -329,7 +343,10 @@ class FullscreenHeaderController(
                 .apply {
                     show(
                         isTaskInImmersiveMode = false,
-                        showImmersiveOption = taskInfo.requestingImmersive,
+                        showImmersiveOption =
+                            fullImmersivePolicy.shouldOfferImmersiveOption(
+                                taskInfo.requestingImmersive
+                            ),
                         showSnapOptions = taskInfo.isResizeable,
                         onHoverListener = { hovered: Boolean ->
                             isLayoutMenuHovered = hovered
@@ -554,7 +571,15 @@ class FullscreenHeaderController(
         traceSection("FullscreenHeaderController#updateViewHolder") {
             val displayId = taskInfo.displayId
             val displayLayout = displayController.getDisplayLayout(displayId) ?: return@traceSection
-            viewHolder.bindData(HeaderData(taskInfo, hasGlobalFocus, true, isCaptionVisible))
+            viewHolder.bindData(
+                HeaderData(
+                    taskInfo,
+                    hasGlobalFocus,
+                    true,
+                    isCaptionVisible,
+                    isCustomHeader = hasCustomHeader,
+                )
+            )
         }
 
     override fun createCaptionView(): WindowDecorationViewHolder<HeaderData> {
@@ -572,6 +597,13 @@ class FullscreenHeaderController(
                 focusTransitionObserver = focusTransitionObserver,
             )
 
+        loadAppInfo()
+        viewHolder = fullscreenHeaderViewHolder
+        return fullscreenHeaderViewHolder
+    }
+
+    private fun loadAppInfo() {
+        loadAppInfoJob?.cancel()
         loadAppInfoJob =
             mainScope.launch {
                 val (name, icon) = taskResourceLoader.getNameAndHeaderIcon(taskInfo)
@@ -579,8 +611,12 @@ class FullscreenHeaderController(
                 viewHolder.setAppIcon(icon)
                 notifyCaptionStateChanged()
             }
-        viewHolder = fullscreenHeaderViewHolder
-        return fullscreenHeaderViewHolder
+    }
+
+    /** Shows the new name and icon of an app that changed its task description. */
+    private fun reloadAppInfoIfStale() {
+        if (!taskResourceLoader.isNameAndHeaderIconStale(taskInfo)) return
+        loadAppInfo()
     }
 
     override fun getCaptionHeight(): Int = dimensions.height + getCaptionTopPadding()
@@ -588,7 +624,12 @@ class FullscreenHeaderController(
     override fun getCaptionWidth(): Int =
         taskInfo.getConfiguration().windowConfiguration.bounds.width()
 
-    override val occludingElements: List<OccludingElement> = emptyList()
+    override val occludingElements: List<OccludingElement>
+        get() =
+            when {
+                hasCustomHeader -> viewHolder.getOccludingElements()
+                else -> emptyList()
+            }
 
     /**
      * Announces that the app window is now being focused for accessibility. This is used after a

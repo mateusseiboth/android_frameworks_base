@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.Text
@@ -35,6 +36,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
@@ -50,6 +52,9 @@ import com.android.systemui.common.ui.compose.Icon
 import com.android.systemui.globalactions.ui.viewmodel.GlobalActionUiState
 import com.android.systemui.lifecycle.rememberViewModel
 import com.android.systemui.qs.panels.ui.viewmodel.toolbar.PowerMenuViewModel
+import com.android.systemui.qs.ui.compose.FocusRingPlacement
+import com.android.systemui.qs.ui.compose.materialFocusRing
+import com.android.systemui.res.R
 
 /**
  * A composable that displays the inline Power Menu.
@@ -97,6 +102,11 @@ private fun ActionRow(viewModel: GlobalActionUiState.Visible, modifier: Modifier
         modifier =
             modifier
                 .fillMaxWidth()
+                // The card clips its rows, so the ring runs along the row's inner edge.
+                .materialFocusRing(
+                    CornerSize(dimensionResource(R.dimen.focus_ring_tight_corner_radius)),
+                    FocusRingPlacement.Inside,
+                )
                 .clickable(
                     role = Role.Button,
                     onClick = viewModel.onClick,

@@ -410,6 +410,54 @@ class DesktopModeWindowDecorViewModelTests : DesktopModeWindowDecorViewModelTest
     }
 
     @Test
+    fun testStatusBarHoverChanged_notifiesDecorsInDisplay() {
+        spyContext.orCreateTestableResources.addOverride(
+            R.bool.config_fullscreenHeaderFollowsStatusBarHover,
+            true,
+        )
+        val task1 = createTask(windowingMode = WINDOWING_MODE_FREEFORM, displayId = 1)
+        val decoration1 = setUpMockDecorationForTask(task1)
+        onTaskOpening(task1)
+        val task2 = createTask(windowingMode = WINDOWING_MODE_FREEFORM, displayId = 2)
+        val decoration2 = setUpMockDecorationForTask(task2)
+        onTaskOpening(task2)
+
+        desktopModeWindowDecorViewModel.onStatusBarHoverChanged(
+            /* displayId= */ 2,
+            /* isHovering= */ true,
+            /* x= */ 300f,
+        )
+        desktopModeWindowDecorViewModel.onStatusBarHoverChanged(
+            /* displayId= */ 2,
+            /* isHovering= */ false,
+            /* x= */ 0f,
+        )
+
+        verify(decoration1, never()).onStatusBarHoverChanged(anyOrNull())
+        verify(decoration2).onStatusBarHoverChanged(300f)
+        verify(decoration2).onStatusBarHoverChanged(null)
+    }
+
+    @Test
+    fun testStatusBarHoverChanged_configOff_notifiesNoDecor() {
+        spyContext.orCreateTestableResources.addOverride(
+            R.bool.config_fullscreenHeaderFollowsStatusBarHover,
+            false,
+        )
+        val task = createTask(windowingMode = WINDOWING_MODE_FREEFORM, displayId = 2)
+        val decoration = setUpMockDecorationForTask(task)
+        onTaskOpening(task)
+
+        desktopModeWindowDecorViewModel.onStatusBarHoverChanged(
+            /* displayId= */ 2,
+            /* isHovering= */ true,
+            /* x= */ 300f,
+        )
+
+        verify(decoration, never()).onStatusBarHoverChanged(anyOrNull())
+    }
+
+    @Test
     fun testKeyguardState_notifiesAllDecors() {
         val decoration1 = createOpenTaskDecoration(windowingMode = WINDOWING_MODE_FREEFORM)
         val decoration2 = createOpenTaskDecoration(windowingMode = WINDOWING_MODE_FREEFORM)

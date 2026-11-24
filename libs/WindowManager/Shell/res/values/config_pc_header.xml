@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2026 The LineageOS Project
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+         http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+-->
+<resources>
+    <!-- Whether desktop windows never enter the "full immersive" state (fullscreen bounds with
+         the header hidden under the status bar). When true, an immersive app keeps its header
+         when maximized and the layout menu does not offer the immersive option. -->
+    <bool name="config_disableDesktopFullImmersive">false</bool>
+
+    <!-- Whether the fullscreen header slides down from the top edge when shown and back up when
+         hidden, instead of appearing and disappearing at once. -->
+    <bool name="config_animateFullscreenHeader">false</bool>
+
+    <!-- Whether split-screen tasks of a desktop-first display get the fullscreen header (app chip,
+         exit and close) like fullscreen tasks, instead of the app handle. -->
+    <bool name="config_showFullscreenHeaderInSplitScreen">false</bool>
+
+    <!-- Whether an app that draws its own caption (transparent caption bar appearance, such as a
+         browser tab strip) keeps it under the fullscreen header of a desktop-first display: the
+         header turns transparent and gives the app the caption insets, as in a desktop window. -->
+    <bool name="config_keepCustomHeaderInFullscreen">false</bool>
+
+    <!-- Whether window headers show the label and icon an app sets on its task description, and
+         update them when the app changes it, instead of its launch activity's label and icon. -->
+    <bool name="config_windowHeaderFollowsTaskDescription">false</bool>
+
+    <!-- Apps whose window headers follow their task description when
+         config_windowHeaderFollowsTaskDescription is true. Empty means every app. -->
+    <string-array name="config_windowHeaderTaskDescriptionPackages" translatable="false" />
+</resources>

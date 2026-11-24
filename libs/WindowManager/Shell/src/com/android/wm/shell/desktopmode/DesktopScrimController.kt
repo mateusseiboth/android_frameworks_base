@@ -17,15 +17,22 @@ package com.android.wm.shell.desktopmode
 
 import android.app.ActivityManager.RunningTaskInfo
 import android.app.IWallpaperManager
+import android.app.WindowConfiguration.WINDOWING_MODE_FREEFORM
 import android.app.KeyguardManager
 import android.content.Context
 import android.graphics.Rect
+import android.os.IBinder
 import android.os.ServiceManager
 import android.os.SystemProperties
 import android.util.ArrayMap
+import android.view.SurfaceControl
+import android.window.TransitionInfo
 import com.android.internal.annotations.VisibleForTesting
 import com.android.window.flags.Flags
+import com.android.wm.shell.R
 import com.android.wm.shell.RootTaskDisplayAreaOrganizer
+import com.android.wm.shell.common.DisplayController
+import com.android.wm.shell.common.DisplayLayout
 import com.android.wm.shell.common.ShellExecutor
 import com.android.wm.shell.desktopmode.DesktopModeEventLogger.Companion.ExitReason
 import com.android.wm.shell.desktopmode.DesktopTasksController.SnapPosition
@@ -33,6 +40,8 @@ import com.android.wm.shell.shared.annotations.ShellMainThread
 import com.android.wm.shell.shared.desktopmode.DesktopScrimListener
 import com.android.wm.shell.sysui.OverviewVisibilityChangeListener
 import com.android.wm.shell.sysui.ShellController
+import com.android.wm.shell.transition.Transitions
+import com.android.wm.shell.transition.Transitions.TRANSIT_EXIT_PIP
 import java.util.concurrent.Executor
 
 /** Handle enabling and disabling the desktop scrim effect. */
@@ -43,7 +52,14 @@ class DesktopScrimController(
     private val rootTaskDisplayAreaOrganizer: RootTaskDisplayAreaOrganizer,
     private val keyguardManager: KeyguardManager,
     @ShellMainThread private val mainExecutor: ShellExecutor,
-) : KeyguardManager.KeyguardLockedStateListener, OverviewVisibilityChangeListener {
+    private val context: Context,
+    private val displayController: DisplayController,
+    private val transitions: Transitions,
+) :
+    KeyguardManager.KeyguardLockedStateListener,
+    OverviewVisibilityChangeListener,
+    DisplayController.OnDisplaysChangedListener,
+    Transitions.TransitionObserver {
     private val mDesktopScrimListeners = ArrayMap<DesktopScrimListener, Executor>()
 
     private val wallpaperService: IWallpaperManager =
@@ -55,12 +71,56 @@ class DesktopScrimController(
     private val lastAppliedScrimState =
         mutableMapOf<Int, Boolean>() // displayId to applyLightOutEffect
 
+    private val trackedTransitions = DesktopScrimTransitionTracker<IBinder>()
+    private var isTrackingTransitions = false
+
     fun onInit() {
         if (Flags.updateDesktopScrimWhenLockedBugfix()) {
             keyguardManager.addKeyguardLockedStateListener(mainExecutor, this)
         }
         if (Flags.handleOverviewDesktopScrimBugfix()) {
             shellController.addOverviewVisibilityChangeListener(this)
+        }
+        if (context.resources.getBoolean(R.bool.config_desktopScrimFollowsStableInsets)) {
+            displayController.addDisplayWindowListener(this)
+        }
+        isTrackingTransitions =
+            context.resources.getBoolean(R.bool.config_desktopScrimTracksTransitions)
+        if (isTrackingTransitions) {
+            transitions.registerObserver(this)
+        }
+    }
+
+    /**
+     * Computes the scrim of every display again once [transition] is over, even when it is
+     * aborted. For transitions whose window changes do not go through this controller, like the
+     * bounds update after a display layout change.
+     */
+    fun trackTransitionToUpdateScrim(transition: IBinder) {
+        if (!isTrackingTransitions) return
+        trackedTransitions.track(transition, updateWhenAborted = true)
+    }
+
+    /** A window that leaves picture-in-picture for the desktop may come back maximized. */
+    override fun onTransitionReady(
+        transition: IBinder,
+        info: TransitionInfo,
+        startTransaction: SurfaceControl.Transaction,
+        finishTransaction: SurfaceControl.Transaction,
+    ) {
+        if (info.type != TRANSIT_EXIT_PIP) return
+        if (info.changes.none { it.taskInfo?.windowingMode == WINDOWING_MODE_FREEFORM }) return
+        trackedTransitions.track(transition, updateWhenAborted = false)
+    }
+
+    override fun onTransitionMerged(merged: IBinder, playing: IBinder) {
+        trackedTransitions.onMerged(merged, playing)
+    }
+
+    override fun onTransitionFinished(transition: IBinder, aborted: Boolean) {
+        if (!trackedTransitions.onFinished(transition, aborted)) return
+        rootTaskDisplayAreaOrganizer.displayIds.forEach { displayId ->
+            updateDesktopScrimWhenUnobstructed(displayId)
         }
     }
 
@@ -151,6 +211,24 @@ class DesktopScrimController(
                 updateDesktopScrimIfNeeded(displayId, shellController.currentUserId)
             }
         }
+    }
+
+    /**
+     * The stable bounds decide whether a window counts as maximized, so a taskbar or status bar
+     * that changes size can turn the scrim on or off.
+     */
+    override fun onStableInsetsChanging(displayId: Int, oldLayout: DisplayLayout?) {
+        updateDesktopScrimWhenUnobstructed(displayId)
+    }
+
+    /**
+     * Computes the scrim of [displayId] again, unless the keyguard or Overview is showing: both
+     * keep the scrim off until they are gone.
+     */
+    private fun updateDesktopScrimWhenUnobstructed(displayId: Int) {
+        if (keyguardManager.isKeyguardLocked) return
+        if (shellController.isOverviewVisible(displayId)) return
+        updateDesktopScrimIfNeeded(displayId, shellController.currentUserId)
     }
 
     override fun onOverviewHidden(displayId: Int) {

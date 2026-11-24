@@ -338,6 +338,7 @@ public class NotificationStackScrollLayout
     private boolean mOnlyScrollingInThisMotion;
     private boolean mDisallowDismissInThisMotion;
     private boolean mDisallowScrollingInThisMotion;
+    private boolean mScrollShadeOnBottomNotifExpand;
     private long mGoToFullShadeDelay;
     private final ViewTreeObserver.OnPreDrawListener mChildrenUpdater
             = new ViewTreeObserver.OnPreDrawListener() {
@@ -993,6 +994,8 @@ public class NotificationStackScrollLayout
         mQsScrollBoundaryPosition = SystemBarUtils.getQuickQsOffsetHeight(mContext);
         mFullWidthNotificationsInLandscape = res.getBoolean(
                 R.bool.config_fullWidthNotificationsInLandscape);
+        mScrollShadeOnBottomNotifExpand = res.getBoolean(
+                R.bool.config_scrollShadeOnBottomNotificationExpand);
     }
 
     void updateSidePadding(int viewWidth) {
@@ -5075,6 +5078,7 @@ public class NotificationStackScrollLayout
         }
         updateContentHeight();
         updateScrollPositionOnExpandInBottom(view);
+        revealRowExpandedByUser(view);
         clampScrollPosition();
         notifyHeightChangeListener(view, needsAnimation);
         ExpandableNotificationRow row = view instanceof ExpandableNotificationRow
@@ -5143,6 +5147,51 @@ public class NotificationStackScrollLayout
                 }
             }
         }
+    }
+
+    /**
+     * Scrolls the stack so that a row the user just expanded (a click, a key, an accessibility
+     * action) is in view when it grew past the bottom of the visible stack, if
+     * config_scrollShadeOnBottomNotificationExpand is set. Drags that expand a row are handled by
+     * {@link #updateScrollPositionOnExpandInBottom}.
+     */
+    private void revealRowExpandedByUser(ExpandableView view) {
+        if (!(view instanceof ExpandableNotificationRow row)) return;
+        if (!row.consumeUserExpansionToReveal()) return;
+        if (!mScrollShadeOnBottomNotifExpand || onKeyguard() || row.isUserSwipingToExpandRow()) {
+            return;
+        }
+        float rowTop = row.getTranslationY();
+        if (row.isChildInGroup()) {
+            rowTop += row.getNotificationParent().getTranslationY();
+        }
+        final float scroll = ExpandedRowScroll.scrollToRevealExpandedRow(rowTop,
+                rowTop + row.getIntrinsicHeight(), getVisibleStackTop(),
+                getVisibleStackBottom(row));
+        if (scroll <= 0f) return;
+        if (SceneContainerFlag.isEnabled()) {
+            mScrollViewFields.sendSyntheticScroll(scroll);
+        }
+        setOwnScrollY((int) (getOwnScrollY() + scroll));
+    }
+
+    private float getVisibleStackTop() {
+        if (!SceneContainerFlag.isEnabled()) return 0f;
+        return mAmbientState.getStackBounds().top;
+    }
+
+    /** The bottom of the visible stack, above the shelf unless {@code row} is the last row. */
+    private float getVisibleStackBottom(ExpandableNotificationRow row) {
+        float bottom = SceneContainerFlag.isEnabled()
+                ? mAmbientState.getStackCutoff()
+                : mMaxLayoutHeight + getStackTranslation();
+        NotificationSection lastSection = mSectionsManager.getLastVisibleSection();
+        ExpandableView lastVisibleChild =
+                lastSection == null ? null : lastSection.getLastVisibleChild();
+        if (row != lastVisibleChild && mShelf.getVisibility() != GONE) {
+            bottom -= mShelf.getIntrinsicHeight() + mPaddingBetweenElements;
+        }
+        return bottom;
     }
 
     void setOnHeightChangedListener(

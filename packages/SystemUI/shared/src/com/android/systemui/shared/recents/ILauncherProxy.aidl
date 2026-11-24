@@ -24,7 +24,7 @@ import android.view.MotionEvent;
 import android.app.contextualsearch.ContextualSearchConfig;
 import com.android.systemui.shared.recents.ISystemUiProxy;
 
-// Next ID: 41
+// Next ID: 42
 oneway interface ILauncherProxy {
 
     void onActiveNavBarRegionChanges(in Region activeRegion) = 11;
@@ -171,4 +171,10 @@ oneway interface ILauncherProxy {
      * Sent when contextual search has been invoked with the given entrypoint and config.
      */
     void invokeContextualSearch(int entryPoint, in ContextualSearchConfig config) = 40;
+
+    /**
+     * Sent when an empty part of the desktop status bar is tapped: closes the taskbar's All Apps
+     * and the launcher's floating views on the display.
+     */
+    void closeFloatingViews(int displayId) = 41;
 }
