@@ -473,6 +473,9 @@ public class DisplayPolicy {
                 R.bool.config_remoteInsetsControllerControlsSystemBars) || r.getBoolean(
                 R.bool.config_remoteInsetsControllerSystemBarsCanBeShownByUserAction);
         mPanicThresholdMs = r.getInteger(R.integer.config_immersive_mode_confirmation_panic);
+        // The top and bottom edges reveal the status bar with the window header and the taskbar.
+        final long mouseGestureDelayMs = MouseEdgeRevealDelay.fromConfig(
+                r.getInteger(R.integer.config_mouseEdgeRevealDelayMs));
 
         mAccessibilityManager = (AccessibilityManager) mContext.getSystemService(
                 Context.ACCESSIBILITY_SERVICE);
@@ -488,8 +491,6 @@ public class DisplayPolicy {
         if (!com.android.window.flags.Flags.enableTransientGestureInSystemUi()) {
             SystemGesturesPointerEventListener.Callbacks gesturesPointerEventCallbacks =
                     new SystemGesturesPointerEventListener.Callbacks() {
-
-                private static final long MOUSE_GESTURE_DELAY_MS = 500;
 
                 private Runnable mOnSwipeFromLeft = this::onSwipeFromLeft;
                 private Runnable mOnSwipeFromTop = this::onSwipeFromTop;
@@ -597,25 +598,27 @@ public class DisplayPolicy {
                 @Override
                 public void onMouseHoverAtLeft() {
                     mHandler.removeCallbacks(mOnSwipeFromLeft);
-                    mHandler.postDelayed(mOnSwipeFromLeft, MOUSE_GESTURE_DELAY_MS);
+                    mHandler.postDelayed(mOnSwipeFromLeft,
+                            MouseEdgeRevealDelay.DEFAULT_DELAY_MS);
                 }
 
                 @Override
                 public void onMouseHoverAtTop() {
                     mHandler.removeCallbacks(mOnSwipeFromTop);
-                    mHandler.postDelayed(mOnSwipeFromTop, MOUSE_GESTURE_DELAY_MS);
+                    mHandler.postDelayed(mOnSwipeFromTop, mouseGestureDelayMs);
                 }
 
                 @Override
                 public void onMouseHoverAtRight() {
                     mHandler.removeCallbacks(mOnSwipeFromRight);
-                    mHandler.postDelayed(mOnSwipeFromRight, MOUSE_GESTURE_DELAY_MS);
+                    mHandler.postDelayed(mOnSwipeFromRight,
+                            MouseEdgeRevealDelay.DEFAULT_DELAY_MS);
                 }
 
                 @Override
                 public void onMouseHoverAtBottom() {
                     mHandler.removeCallbacks(mOnSwipeFromBottom);
-                    mHandler.postDelayed(mOnSwipeFromBottom, MOUSE_GESTURE_DELAY_MS);
+                    mHandler.postDelayed(mOnSwipeFromBottom, mouseGestureDelayMs);
                 }
 
                 @Override
