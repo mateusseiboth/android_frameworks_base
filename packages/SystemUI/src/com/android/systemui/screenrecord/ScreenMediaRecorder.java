@@ -29,6 +29,7 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.graphics.drawable.Icon;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
@@ -60,6 +61,9 @@ import androidx.annotation.NonNull;
 
 import com.android.internal.R;
 import com.android.systemui.mediaprojection.MediaProjectionCaptureTarget;
+import com.android.systemui.screenrecord.region.PixelRegion;
+import com.android.systemui.screenrecord.region.RecordingSurface;
+import com.android.systemui.screenrecord.region.RecordingSurfaces;
 
 import java.io.Closeable;
 import java.io.File;
@@ -94,6 +98,9 @@ public class ScreenMediaRecorder {
     private MediaProjection mMediaProjection;
     private Surface mInputSurface;
     private VirtualDisplay mVirtualDisplay;
+    private RecordingSurface mRecordingSurface;
+    @Nullable
+    private Rect mCropRegion;
     private MediaRecorder mMediaRecorder;
     private int mUid;
     private ScreenInternalAudioRecorder mAudio;
@@ -165,6 +172,11 @@ public class ScreenMediaRecorder {
         mHEVC = hevc;
     }
 
+    /** Records only this part of the display, in display pixels; null records all of it. */
+    public void setCropRegion(@Nullable Rect cropRegion) {
+        mCropRegion = cropRegion;
+    }
+
     private void prepare() throws IOException, RemoteException, RuntimeException {
         //Setup media projection
         IBinder b = ServiceManager.getService(MEDIA_PROJECTION_SERVICE);
@@ -210,8 +222,12 @@ public class ScreenMediaRecorder {
         display.getRealMetrics(metrics);
         int refreshRate = mLowQuality ? LOW_VIDEO_FRAME_RATE : (int) display.getRefreshRate();
         if (mMaxRefreshRate != 0 && refreshRate > mMaxRefreshRate) refreshRate = mMaxRefreshRate;
-        VideoParameters videoParameters = getSupportedSize(metrics.widthPixels,
-                metrics.heightPixels, refreshRate);
+        PixelRegion recordedRegion = RecordingSurfaces.regionOf(mCropRegion,
+                metrics.widthPixels, metrics.heightPixels);
+        Size recordedSize = RecordingSurfaces.recordedSizeOf(recordedRegion,
+                metrics.widthPixels, metrics.heightPixels);
+        VideoParameters videoParameters = getSupportedSize(recordedSize.getWidth(),
+                recordedSize.getHeight(), refreshRate);
         if (!mHEVC) {
             mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
             mMediaRecorder.setVideoEncodingProfileLevel(
@@ -245,13 +261,17 @@ public class ScreenMediaRecorder {
         mMediaRecorder.prepare();
         // Create surface
         mInputSurface = mMediaRecorder.getSurface();
+        mRecordingSurface = RecordingSurfaces.create(mInputSurface,
+                new Size(videoParameters.mWidth, videoParameters.mHeight),
+                new Size(metrics.widthPixels, metrics.heightPixels),
+                recordedRegion);
         mVirtualDisplay = mMediaProjection.createVirtualDisplay(
                 "Recording Display",
-                videoParameters.mWidth,
-                videoParameters.mHeight,
+                mRecordingSurface.getWidth(),
+                mRecordingSurface.getHeight(),
                 metrics.densityDpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                mInputSurface,
+                mRecordingSurface.getSurface(),
                 new VirtualDisplay.Callback() {
                     @Override
                     public void onStopped() {
@@ -386,6 +406,9 @@ public class ScreenMediaRecorder {
     public void end(@StopReason int stopReason) throws IOException {
         if (mIsStarted.compareAndSet(true, false)) {
             Closer closer = new Closer();
+
+            // Stop drawing cropped frames before the encoder goes away.
+            closer.register(mRecordingSurface::release);
 
             // MediaRecorder might throw RuntimeException if stopped immediately after starting
             // We should remove the recording in this case as it will be invalid

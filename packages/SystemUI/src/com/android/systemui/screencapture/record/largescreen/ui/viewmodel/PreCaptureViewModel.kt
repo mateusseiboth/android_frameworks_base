@@ -155,10 +155,11 @@ constructor(
 
     fun updateCaptureType(selectedType: ScreenCaptureType) {
         // This fixes the crash when select partial capture region first and then click Record radio
-        // button (b/458133150). We need to remove this code once region recording is supported.
+        // button (b/458133150). Only needed while region recording is not supported.
         if (
             selectedType == ScreenCaptureType.RECORDING &&
-                captureRegion == ScreenCaptureRegion.PARTIAL
+                captureRegion == ScreenCaptureRegion.PARTIAL &&
+                !toolbarViewModel.regionRecordingSupported
         ) {
             updateCaptureRegion(ScreenCaptureRegion.FULLSCREEN)
         }
@@ -339,7 +340,7 @@ constructor(
     private fun startRecording() {
         when (captureRegionSource.value) {
             ScreenCaptureRegion.FULLSCREEN -> startFullscreenRecording()
-            ScreenCaptureRegion.PARTIAL -> {}
+            ScreenCaptureRegion.PARTIAL -> regionBoxSource.value?.let { startRegionRecording(it) }
             ScreenCaptureRegion.APP_WINDOW -> topTask?.let { startAppWindowRecording(it.taskId) }
         }
     }
@@ -362,7 +363,16 @@ constructor(
         )
     }
 
-    private fun beginRecording(recordingTarget: MediaProjectionCaptureTarget?) {
+    private fun startRegionRecording(region: Rect) {
+        require(captureTypeSource.value == ScreenCaptureType.RECORDING)
+        require(captureRegionSource.value == ScreenCaptureRegion.PARTIAL)
+        beginRecording(recordingTarget = null, cropRegion = Rect(region))
+    }
+
+    private fun beginRecording(
+        recordingTarget: MediaProjectionCaptureTarget?,
+        cropRegion: Rect? = null,
+    ) {
         // Hide the pre-capture UI before starting the recording.
         // TODO(b/437970158): Show the countdown before starting recording.
         hideUi()
@@ -379,6 +389,7 @@ constructor(
                     lowQuality = toolbarViewModel.recordParametersViewModel.lowQuality,
                     longerDuration = toolbarViewModel.recordParametersViewModel.longerDuration,
                     hevc = toolbarViewModel.recordParametersViewModel.hevc,
+                    cropRegion = cropRegion,
                 )
             )
         }

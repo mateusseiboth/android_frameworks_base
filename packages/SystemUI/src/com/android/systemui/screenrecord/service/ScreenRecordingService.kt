@@ -242,17 +242,18 @@ open class ScreenRecordingService : ComponentService() {
                     shouldShowSeconds = parameters.shouldShowSeconds,
                     recorder =
                         ScreenMediaRecorder(
-                            this@ScreenRecordingService,
-                            Handler(Looper.getMainLooper()),
-                            Process.myUid(),
-                            parameters.audioSource,
-                            parameters.captureTarget,
-                            parameters.displayId,
-                            screenMediaRecorderListener,
-                            parameters.lowQuality,
-                            parameters.longerDuration,
-                            parameters.hevc,
-                        ),
+                                this@ScreenRecordingService,
+                                Handler(Looper.getMainLooper()),
+                                Process.myUid(),
+                                parameters.audioSource,
+                                parameters.captureTarget,
+                                parameters.displayId,
+                                screenMediaRecorderListener,
+                                parameters.lowQuality,
+                                parameters.longerDuration,
+                                parameters.hevc,
+                            )
+                            .apply { setCropRegion(parameters.cropRegion) },
                 )
             context.startRecording()
             recordingContext = context

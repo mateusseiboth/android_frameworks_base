@@ -389,6 +389,7 @@ class PreCaptureViewModelTest : SysuiTestCase() {
         }
 
     @Test
+    @DisableFlags(Flags.FLAG_LARGE_SCREEN_REGION_RECORDING)
     fun updateCaptureType_whenPartialRecordingIsSelected_updateCaptureRegionToFullScreen() =
         kosmos.runTest {
             setupViewModel(
@@ -397,6 +398,65 @@ class PreCaptureViewModelTest : SysuiTestCase() {
 
             viewModel.updateCaptureType(ScreenCaptureType.RECORDING)
             assertThat(viewModel.captureRegion).isEqualTo(ScreenCaptureRegion.FULLSCREEN)
+        }
+
+    @Test
+    @EnableFlags(Flags.FLAG_LARGE_SCREEN_REGION_RECORDING)
+    fun updateCaptureType_whenRegionRecordingIsSupported_keepsPartialRegion() =
+        kosmos.runTest {
+            setupViewModel(
+                LargeScreenCaptureUiParameters(defaultCaptureRegion = ScreenCaptureRegion.PARTIAL)
+            )
+
+            viewModel.updateCaptureType(ScreenCaptureType.RECORDING)
+            assertThat(viewModel.captureRegion).isEqualTo(ScreenCaptureRegion.PARTIAL)
+        }
+
+    @Test
+    @EnableFlags(Flags.FLAG_LARGE_SCREEN_REGION_RECORDING)
+    fun beginCapture_forRegionRecording_startsRecordingWithCropRegion() =
+        kosmos.runTest {
+            val status by collectLastValue(screenRecordingServiceRepository.status)
+            setupViewModel()
+
+            viewModel.updateCaptureType(ScreenCaptureType.RECORDING)
+            viewModel.updateCaptureRegion(ScreenCaptureRegion.PARTIAL)
+            val regionBox = Rect(40, 60, 840, 510)
+            viewModel.updateRegionBoxBounds(regionBox)
+
+            viewModel.beginCapture()
+            with((status as ScreenRecordingStatus.Starting).parameters) {
+                assertThat(captureTarget).isNull()
+                assertThat(cropRegion).isEqualTo(regionBox)
+                assertThat(this.displayId).isEqualTo(displayId)
+            }
+        }
+
+    @Test
+    @EnableFlags(Flags.FLAG_LARGE_SCREEN_REGION_RECORDING)
+    fun beginCapture_forRegionRecording_closesUi() =
+        kosmos.runTest {
+            setupViewModel()
+            viewModel.updateCaptureType(ScreenCaptureType.RECORDING)
+            viewModel.updateCaptureRegion(ScreenCaptureRegion.PARTIAL)
+            viewModel.updateRegionBoxBounds(Rect(0, 0, 100, 100))
+
+            viewModel.beginCapture()
+
+            assertUiClosed()
+        }
+
+    @Test
+    fun beginCapture_forFullScreenRecording_hasNoCropRegion() =
+        kosmos.runTest {
+            val status by collectLastValue(screenRecordingServiceRepository.status)
+            setupViewModel()
+
+            viewModel.updateCaptureType(ScreenCaptureType.RECORDING)
+            viewModel.updateCaptureRegion(ScreenCaptureRegion.FULLSCREEN)
+
+            viewModel.beginCapture()
+            assertThat((status as ScreenRecordingStatus.Starting).parameters.cropRegion).isNull()
         }
 
     @Test

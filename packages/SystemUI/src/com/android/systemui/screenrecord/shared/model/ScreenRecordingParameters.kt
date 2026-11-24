@@ -16,6 +16,7 @@
 
 package com.android.systemui.screenrecord.shared.model
 
+import android.graphics.Rect
 import android.os.Parcel
 import android.os.Parcelable
 import com.android.systemui.mediaprojection.MediaProjectionCaptureTarget
@@ -33,6 +34,8 @@ constructor(
     val lowQuality: Boolean = false,
     val longerDuration: Boolean = false,
     val hevc: Boolean = false,
+    /** Part of the display to record, in display pixels; null records the whole capture target. */
+    val cropRegion: Rect? = null,
 ) : Parcelable {
 
     constructor(
@@ -53,6 +56,7 @@ constructor(
         parcel.readBoolean(),
         parcel.readBoolean(),
         parcel.readBoolean(),
+        parcel.readTypedObject(Rect.CREATOR),
     )
 
     override fun describeContents(): Int = 0
@@ -68,6 +72,7 @@ constructor(
             writeBoolean(lowQuality)
             writeBoolean(longerDuration)
             writeBoolean(hevc)
+            writeTypedObject(cropRegion, flags)
         }
 
     companion object CREATOR : Parcelable.Creator<ScreenRecordingParameters> {
