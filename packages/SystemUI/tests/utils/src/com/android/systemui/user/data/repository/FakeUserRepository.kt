@@ -152,6 +152,13 @@ class FakeUserRepository @Inject constructor(private val userIconProvider: UserI
         logOutWithUserManagerCallCount++
     }
 
+    var switchToLoginScreenCallCount: Int = 0
+        private set
+
+    override suspend fun switchToLoginScreen() {
+        switchToLoginScreenCallCount++
+    }
+
     override suspend fun getUserImage(@UserIdInt userId: Int, iconSize: Int): Drawable {
         return userIconProvider.getUserImage(userId, iconSize)
     }

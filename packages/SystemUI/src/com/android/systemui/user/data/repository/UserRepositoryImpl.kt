@@ -264,6 +264,12 @@ constructor(
         }
     }
 
+    override suspend fun switchToLoginScreen() {
+        if (isUserManagerLogoutEnabled.value) {
+            withContext(backgroundDispatcher) { activityManager.switchUser(UserHandle.SYSTEM) }
+        }
+    }
+
     @SuppressLint("MissingPermission")
     override fun refreshUsers() {
         applicationScope.launch {

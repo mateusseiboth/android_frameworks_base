@@ -30,6 +30,8 @@ enum class GlobalActionType(val configKey: String) {
     ASSIST("assist"),
     RESTART("restart"),
     LOGOUT("logout"),
+    /** Shows the login screen and keeps the user signed in (headless system user as login). */
+    SWITCH_USER("switch_user"),
     EMERGENCY("emergency"),
     SCREENSHOT("screenshot"),
     SYSTEM_UPDATE("system_update"),

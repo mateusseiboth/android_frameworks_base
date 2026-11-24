@@ -128,6 +128,18 @@ class PowerMenuViewModelTest : SysuiTestCase() {
         }
 
     @Test
+    fun items_loginScreen_containsSwitchUserAction() =
+        kosmos.runTest {
+            // GIVEN switch user is possible AND the user signs out to a login screen
+            globalActionsRepository.possibleGlobalActions = listOf(GlobalActionType.SWITCH_USER)
+            fakeUserRepository.setUserManagerLogoutEnabled(true)
+
+            // THEN items contains the switch user action
+            assertThat(underTest.visibleActions.map { it.key })
+                .contains(GlobalActionType.SWITCH_USER)
+        }
+
+    @Test
     fun items_shutdownEnabled_containsShutdownAction() =
         kosmos.runTest {
             // GIVEN shutdown is possible
@@ -157,16 +169,18 @@ class PowerMenuViewModelTest : SysuiTestCase() {
                     GlobalActionType.LOGOUT,
                     GlobalActionType.LOCK,
                     GlobalActionType.RESTART,
+                    GlobalActionType.SWITCH_USER,
                 )
             // GIVEN all necessary conditions are met for them to be available
             fakeUserRepository.setUserManagerLogoutEnabled(true)
             setUnlocked(true)
             switchToScene(Scenes.Gone)
 
-            // THEN items are in the fixed order: Lock -> Logout -> Restart -> Power
+            // THEN items are in the fixed order: Lock -> Switch user -> Logout -> Restart -> Power
             assertThat(underTest.visibleActions.map { it.key })
                 .containsExactly(
                     GlobalActionType.LOCK,
+                    GlobalActionType.SWITCH_USER,
                     GlobalActionType.LOGOUT,
                     GlobalActionType.RESTART,
                     GlobalActionType.POWER,

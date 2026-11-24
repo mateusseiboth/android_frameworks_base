@@ -21,6 +21,7 @@ import com.android.systemui.globalactions.ui.viewmodel.GlobalActionUiState
 import com.android.systemui.globalactions.ui.viewmodel.GlobalActionViewModel
 import com.android.systemui.globalactions.ui.viewmodel.LockGlobalActionViewModel
 import com.android.systemui.globalactions.ui.viewmodel.LogoutGlobalActionViewModel
+import com.android.systemui.globalactions.ui.viewmodel.SwitchUserGlobalActionViewModel
 import com.android.systemui.globalactions.ui.viewmodel.RestartGlobalActionViewModel
 import com.android.systemui.globalactions.ui.viewmodel.ShutdownGlobalActionViewModel
 import com.android.systemui.lifecycle.HydratedActivatable
@@ -42,6 +43,7 @@ class PowerMenuViewModel
 @AssistedInject
 constructor(
     lockFactory: LockGlobalActionViewModel.Factory,
+    switchUserFactory: SwitchUserGlobalActionViewModel.Factory,
     logoutFactory: LogoutGlobalActionViewModel.Factory,
     restartFactory: RestartGlobalActionViewModel.Factory,
     shutdownFactory: ShutdownGlobalActionViewModel.Factory,
@@ -58,6 +60,7 @@ constructor(
     private val actions: List<GlobalActionViewModel> =
         listOf(
             lockFactory.create(),
+            switchUserFactory.create(),
             logoutFactory.create(),
             restartFactory.create(),
             shutdownFactory.create(),

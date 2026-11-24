@@ -21,6 +21,7 @@ import com.android.systemui.globalactions.ui.viewmodel.lockGlobalActionViewModel
 import com.android.systemui.globalactions.ui.viewmodel.logoutGlobalActionViewModelFactory
 import com.android.systemui.globalactions.ui.viewmodel.restartGlobalActionViewModelFactory
 import com.android.systemui.globalactions.ui.viewmodel.shutdownGlobalActionViewModelFactory
+import com.android.systemui.globalactions.ui.viewmodel.switchUserGlobalActionViewModelFactory
 import com.android.systemui.kosmos.Kosmos
 import com.android.systemui.log.logcatLogBuffer
 
@@ -32,6 +33,7 @@ val Kosmos.powerMenuViewModelFactory by
                     interactor = globalActionsInteractor,
                     logBuffer = logcatLogBuffer("PowerMenuViewModel"),
                     lockFactory = lockGlobalActionViewModelFactory,
+                    switchUserFactory = switchUserGlobalActionViewModelFactory,
                     logoutFactory = logoutGlobalActionViewModelFactory,
                     shutdownFactory = shutdownGlobalActionViewModelFactory,
                     restartFactory = restartGlobalActionViewModelFactory,

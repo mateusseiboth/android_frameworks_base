@@ -62,6 +62,7 @@ constructor(@param:Application private val context: Context) : GlobalActionsRepo
             GlobalActionType.LOCK,
             GlobalActionType.SCREENSHOT,
             GlobalActionType.LOGOUT,
+            GlobalActionType.SWITCH_USER,
             GlobalActionType.SYSTEM_UPDATE,
         )
 

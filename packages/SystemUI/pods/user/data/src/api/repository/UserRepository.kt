@@ -113,6 +113,12 @@ public interface UserRepository {
     public suspend fun logOutWithUserManager()
 
     /**
+     * Switches to the system user, which hosts the login screen, and keeps the current user
+     * running. Does nothing unless [isUserManagerLogoutEnabled].
+     */
+    public suspend fun switchToLoginScreen()
+
+    /**
      * Returns the user ID of the "main user" of the device. This user may have access to certain
      * features which are limited to at most one user. There will never be more than one main user
      * on a device.

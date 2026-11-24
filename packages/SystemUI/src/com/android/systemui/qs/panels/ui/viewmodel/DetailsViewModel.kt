@@ -20,6 +20,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import com.android.internal.logging.UiEventLogger
+import com.android.systemui.Flags.hsuQsChanges
 import com.android.systemui.dagger.SysUISingleton
 import com.android.systemui.plugins.qs.QSTile
 import com.android.systemui.plugins.qs.TileDetailsViewModel
@@ -28,6 +29,7 @@ import com.android.systemui.qs.pipeline.domain.interactor.CurrentTilesInteractor
 import com.android.systemui.qs.pipeline.shared.TileSpec
 import com.android.systemui.qs.tiles.dialog.AudioDetailsViewModel
 import com.android.systemui.shade.domain.interactor.ShadeModeInteractor
+import com.android.systemui.user.domain.interactor.SelectedUserInteractor
 import javax.inject.Inject
 
 @SysUISingleton
@@ -38,7 +40,16 @@ constructor(
     val currentTilesInteractor: CurrentTilesInteractor,
     val shadeModeInteractor: ShadeModeInteractor,
     val uiEventLogger: UiEventLogger,
+    private val selectedUserInteractor: SelectedUserInteractor,
 ) {
+
+    /**
+     * Whether the details header shows its settings button. The login screen (the headless system
+     * user) cannot open Settings, so the button would do nothing there.
+     */
+    val isSettingsButtonVisible: Boolean
+        get() =
+            !(hsuQsChanges() && selectedUserInteractor.isCurrentUserHeadlessSystemUser.value)
 
     /**
      * The current active [TileDetailsViewModel]. If it's `null`, it means the qs overlay is not

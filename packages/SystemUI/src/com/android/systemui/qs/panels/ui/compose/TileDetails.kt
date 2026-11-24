@@ -21,6 +21,8 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -181,28 +183,13 @@ fun TileDetails(
                         style = MaterialTheme.typography.titleMedium,
                         color = colors.onSurface,
                     )
-                    IconButton(
+                    SettingsButton(
+                        isVisible = detailsViewModel.isSettingsButtonVisible,
                         onClick = {
                             tileDetailedViewModel.clickOnSettingsButton()
                             detailsViewModel.logOnSettingsClicked()
                         },
-                        colors =
-                            IconButtonDefaults.iconButtonColors(contentColor = colors.onSurface),
-                        modifier =
-                            Modifier.borderOnFocus(
-                                    MaterialTheme.colorScheme.secondary,
-                                    CornerSize(TileDetailsEntryWideCornerRadius),
-                                )
-                                .size(TileDetailsDefaults.TitleRowButtonSize)
-                                .align(Alignment.CenterVertically),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            // Description is TBD
-                            contentDescription = "Go to Settings",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
+                    )
                 }
                 if (subTitle.isNotEmpty()) {
                     Text(
@@ -219,6 +206,34 @@ fun TileDetails(
                 MapTileDetailsContent(tileDetailedViewModel) { isContentReady = true }
             }
         }
+    }
+}
+
+/** The details header's settings button, or a gap of its size that keeps the title centered. */
+@Composable
+private fun RowScope.SettingsButton(isVisible: Boolean, onClick: () -> Unit) {
+    if (!isVisible) {
+        Spacer(Modifier.size(TileDetailsDefaults.TitleRowButtonSize))
+        return
+    }
+    IconButton(
+        onClick = onClick,
+        colors =
+            IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+        modifier =
+            Modifier.borderOnFocus(
+                    MaterialTheme.colorScheme.secondary,
+                    CornerSize(TileDetailsEntryWideCornerRadius),
+                )
+                .size(TileDetailsDefaults.TitleRowButtonSize)
+                .align(Alignment.CenterVertically),
+    ) {
+        Icon(
+            imageVector = Icons.Default.Settings,
+            // Description is TBD
+            contentDescription = "Go to Settings",
+            tint = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 
