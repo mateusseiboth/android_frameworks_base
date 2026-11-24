@@ -22,6 +22,7 @@ import android.content.Context;
 import com.android.wm.shell.ShellTaskOrganizer;
 import com.android.wm.shell.common.DisplayController;
 import com.android.wm.shell.common.ShellExecutor;
+import com.android.wm.shell.common.TaskStackListenerImpl;
 import com.android.wm.shell.common.suppliers.TransactionSupplier;
 import com.android.wm.shell.dagger.DynamicOverride;
 import com.android.wm.shell.dagger.WMSingleton;
@@ -99,11 +100,13 @@ public class DesktopModule {
             @DynamicOverride DesktopUserRepositories desktopUserRepositories,
             ShellTaskOrganizer shellTaskOrganizer,
             DesktopWallpaperActivityUtils desktopWallpaperActivityUtils,
-            DesktopWallpaperActivityTokenProvider desktopWallpaperActivityTokenProvider
+            DesktopWallpaperActivityTokenProvider desktopWallpaperActivityTokenProvider,
+            TaskStackListenerImpl taskStackListener
     ) {
         return new DesktopHomeScreenPeekController(context, peekTransitionHandlerLazy,
                 displayController, shellController, desktopUserRepositories, shellTaskOrganizer,
-                desktopWallpaperActivityUtils, desktopWallpaperActivityTokenProvider);
+                desktopWallpaperActivityUtils, desktopWallpaperActivityTokenProvider,
+                taskStackListener);
     }
 
     @WMSingleton

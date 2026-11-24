@@ -26,6 +26,7 @@ import android.window.WindowContainerTransaction
 import android.window.WindowContainerTransaction.HierarchyOp.HIERARCHY_OP_TYPE_REORDER
 import androidx.test.filters.SmallTest
 import com.android.window.flags.Flags
+import com.android.wm.shell.R as ShellR
 import com.android.wm.shell.ShellTaskOrganizer
 import com.android.wm.shell.ShellTestCase
 import com.android.wm.shell.TestRunningTaskInfoBuilder
@@ -298,6 +299,85 @@ class DesktopHomeScreenPeekControllerTest : ShellTestCase() {
             }
         assertTrue(reorderChange != null && reorderChange.toTop)
     }
+
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_HOME_SCREEN_PEEKING)
+    fun peek_focusHomeWhilePeeking_makesTasksUnfocusable() {
+        overrideFocusHomeWhilePeeking(true)
+        val desktopTask = createTask(Rect(100, 100, 600, 600))
+        whenever(shellTaskOrganizer.getRunningTaskInfo(any())).thenReturn(desktopTask)
+
+        peekController.peek()
+
+        val wctCaptor = argumentCaptor<WindowContainerTransaction>()
+        verify(peekTransitionHandler).startTransition(wctCaptor.capture(), anyOrNull())
+        assertFalse(getWctFocusableForDesktopTask(wctCaptor.firstValue, desktopTask)!!)
+    }
+
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_HOME_SCREEN_PEEKING)
+    fun peek_configOff_keepsTasksFocusable() {
+        val desktopTask = createTask(Rect(100, 100, 600, 600))
+        whenever(shellTaskOrganizer.getRunningTaskInfo(any())).thenReturn(desktopTask)
+
+        peekController.peek()
+
+        val wctCaptor = argumentCaptor<WindowContainerTransaction>()
+        verify(peekTransitionHandler).startTransition(wctCaptor.capture(), anyOrNull())
+        assertEquals(null, getWctFocusableForDesktopTask(wctCaptor.firstValue, desktopTask))
+    }
+
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_HOME_SCREEN_PEEKING)
+    fun unpeek_focusHomeWhilePeeking_restoresFocusAndReordersTask() {
+        overrideFocusHomeWhilePeeking(true)
+        val desktopTask = createTask(Rect(100, 100, 600, 600))
+        whenever(shellTaskOrganizer.getRunningTaskInfo(any())).thenReturn(desktopTask)
+        peekAndRunAnimationFinishCallback()
+
+        peekController.unpeek()
+
+        val wctCaptor = argumentCaptor<WindowContainerTransaction>()
+        verify(peekTransitionHandler).startTransition(wctCaptor.capture(), anyOrNull())
+        val wct = wctCaptor.firstValue
+        assertTrue(getWctFocusableForDesktopTask(wct, desktopTask)!!)
+        assertTrue(
+            wct.hierarchyOps.any {
+                it.type == HIERARCHY_OP_TYPE_REORDER &&
+                    it.container == desktopTask.token.asBinder() &&
+                    it.toTop
+            }
+        )
+    }
+
+    private fun overrideFocusHomeWhilePeeking(enabled: Boolean) {
+        mContext
+            .getOrCreateTestableResources()
+            .addOverride(ShellR.bool.config_focusHomeWhilePeeking, enabled)
+        peekController =
+            DesktopHomeScreenPeekController(
+                mContext,
+                peekTransitionHandler,
+                displayController,
+                shellController,
+                userRepositories,
+                shellTaskOrganizer,
+                desktopWallpaperActivityUtils,
+                desktopWallpaperActivityTokenProvider,
+            )
+    }
+
+    private fun getWctFocusableForDesktopTask(
+        wct: WindowContainerTransaction,
+        desktopTask: RunningTaskInfo,
+    ): Boolean? =
+        wct.changes.entries
+            .find { (token, change) ->
+                token == desktopTask.token.asBinder() &&
+                    (change.changeMask and WindowContainerTransaction.Change.CHANGE_FOCUSABLE) != 0
+            }
+            ?.value
+            ?.focusable
 
     private fun createTask(bounds: Rect): RunningTaskInfo {
         return TestRunningTaskInfoBuilder()

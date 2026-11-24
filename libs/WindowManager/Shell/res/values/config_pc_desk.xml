@@ -23,4 +23,8 @@
     <!-- Whether the bounds of a window snapped to half of the screen are left out of the
          remembered launch bounds of its app, so a relaunch opens it at its last free size. -->
     <bool name="config_excludeTiledBoundsFromRememberedBounds">false</bool>
+
+    <!-- Whether Home takes the input focus while the home screen is peeked, so keyboard input
+         reaches the launcher; the top desktop window takes it back when the peek ends. -->
+    <bool name="config_focusHomeWhilePeeking">false</bool>
 </resources>
