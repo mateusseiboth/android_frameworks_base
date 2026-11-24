@@ -132,6 +132,7 @@ public class ActivityManagerTest extends AndroidTestCase {
                 20,                      // minHeight
                 0                        // colorBackgroundFloating
         );
+        td1.setTopOpaqueBackgroundColor(0x777777);
 
         TaskDescription td2 = new TaskDescription();
         // Must overwrite all the fields
@@ -210,6 +211,7 @@ public class ActivityManagerTest extends AndroidTestCase {
                 20,                        // minHeight
                 0                          // colorBackgroundFloating
         );
+        tdBitmapNull.setTopOpaqueBackgroundColor(0x777777);
 
         // Normal parceling should keep everything the same.
         TaskDescription tdParcelled = new TaskDescription(parcelingRoundTrip(tdBitmapNull));
@@ -235,6 +237,7 @@ public class ActivityManagerTest extends AndroidTestCase {
                 20,                        // minHeight
                 0                          // colorBackgroundFloating
         );
+        tdBitmapRecycled.setTopOpaqueBackgroundColor(0x777777);
         // Recycled bitmap will be ignored while parceling.
         tdParcelled = new TaskDescription(parcelingRoundTrip(tdBitmapRecycled));
         assertTaskDescriptionEqual(tdBitmapNull, tdParcelled, true, true);
@@ -262,6 +265,7 @@ public class ActivityManagerTest extends AndroidTestCase {
             assertEquals(td1.getSystemBarsAppearance(), td2.getSystemBarsAppearance());
             assertEquals(td1.getTopOpaqueSystemBarsAppearance(),
                     td2.getTopOpaqueSystemBarsAppearance());
+            assertEquals(td1.getTopOpaqueBackgroundColor(), td2.getTopOpaqueBackgroundColor());
             assertEquals(td1.getResizeMode(), td2.getResizeMode());
             assertEquals(td1.getMinWidth(), td2.getMinWidth());
             assertEquals(td1.getMinHeight(), td2.getMinHeight());

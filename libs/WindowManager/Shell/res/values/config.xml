@@ -207,4 +207,9 @@
     <string name="config_gameControlsIntentReceiverPackage" translatable="false"/>
     <string name="config_gameControlsIntentAction" translatable="false"/>
     <string name="config_gameControlsOptOutMetadataKey" translatable="false"/>
+
+    <!-- Whether window decorations take their light or dark theme from the background color of
+         the topmost activity that fills the task, so a translucent activity on top (a dialog
+         activity, for example) does not change the header. -->
+    <bool name="config_windowDecorThemeFromTopOpaqueBackground">false</bool>
 </resources>

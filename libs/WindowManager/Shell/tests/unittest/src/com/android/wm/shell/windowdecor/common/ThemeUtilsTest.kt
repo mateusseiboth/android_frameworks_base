@@ -22,6 +22,7 @@ import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.graphics.Color
 import android.testing.AndroidTestingRunner
 import androidx.test.filters.SmallTest
+import com.android.wm.shell.R
 import com.android.wm.shell.ShellTestCase
 import com.android.wm.shell.TestRunningTaskInfoBuilder
 import com.google.common.truth.Truth.assertThat
@@ -69,6 +70,39 @@ class ThemeUtilsTest : ShellTestCase() {
         val taskInfo = createTaskWithBgColor(Color.TRANSPARENT)
         assertThat(decorThemeUtil.getAppTheme(taskInfo).isDark()).isTrue()
     }
+
+    @Test
+    fun getAppTheme_topOpaqueBackgroundEnabled_usesTheOpaqueActivityBelowATranslucentOne() {
+        setTopOpaqueBackgroundEnabled(true)
+        val taskInfo = createTaskWithBgColors(bgColor = COLOR_DARK, topOpaqueBgColor = COLOR_LIGHT)
+        assertThat(decorThemeUtil.getAppTheme(taskInfo).isLight()).isTrue()
+    }
+
+    @Test
+    fun getAppTheme_topOpaqueBackgroundEnabledButUnset_usesTaskBackground() {
+        setTopOpaqueBackgroundEnabled(true)
+        val taskInfo =
+            createTaskWithBgColors(bgColor = COLOR_DARK, topOpaqueBgColor = Color.TRANSPARENT)
+        assertThat(decorThemeUtil.getAppTheme(taskInfo).isDark()).isTrue()
+    }
+
+    @Test
+    fun getAppTheme_topOpaqueBackgroundDisabled_usesTaskBackground() {
+        setTopOpaqueBackgroundEnabled(false)
+        val taskInfo = createTaskWithBgColors(bgColor = COLOR_DARK, topOpaqueBgColor = COLOR_LIGHT)
+        assertThat(decorThemeUtil.getAppTheme(taskInfo).isDark()).isTrue()
+    }
+
+    private fun setTopOpaqueBackgroundEnabled(enabled: Boolean) {
+        mContext
+            .getOrCreateTestableResources()
+            .addOverride(R.bool.config_windowDecorThemeFromTopOpaqueBackground, enabled)
+    }
+
+    private fun createTaskWithBgColors(bgColor: Int, topOpaqueBgColor: Int): RunningTaskInfo =
+        createTaskWithBgColor(bgColor).apply {
+            taskDescription?.setTopOpaqueBackgroundColor(topOpaqueBgColor)
+        }
 
     private fun setSystemTheme(isDark: Boolean) {
         configuration.uiMode =

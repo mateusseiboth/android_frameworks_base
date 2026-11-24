@@ -2291,6 +2291,35 @@ public class TaskTests extends WindowTestsBase {
     }
 
     @Test
+    public void testTopOpaqueBackgroundColor_comesFromTopActivityFillingTheTask() {
+        final Task task = createTask(mDisplayContent);
+        final ActivityRecord opaque = createActivityRecord(mDisplayContent, task);
+        final ActivityManager.TaskDescription opaqueTd = new ActivityManager.TaskDescription();
+        opaqueTd.setBackgroundColor(Color.WHITE);
+        opaque.setTaskDescription(opaqueTd);
+        final ActivityRecord translucent = createActivityRecord(mDisplayContent, task);
+        translucent.setOccludesParent(false);
+        final ActivityManager.TaskDescription translucentTd = new ActivityManager.TaskDescription();
+        translucentTd.setBackgroundColor(Color.BLACK);
+        translucent.setTaskDescription(translucentTd);
+
+        assertEquals(Color.BLACK, task.getTaskDescription().getBackgroundColor());
+        assertEquals(Color.WHITE, task.getTaskDescription().getTopOpaqueBackgroundColor());
+    }
+
+    @Test
+    public void testTopOpaqueBackgroundColor_noActivityFillsTheTask_isUnset() {
+        final Task task = createTask(mDisplayContent);
+        final ActivityRecord translucent = createActivityRecord(mDisplayContent, task);
+        translucent.setOccludesParent(false);
+        final ActivityManager.TaskDescription td = new ActivityManager.TaskDescription();
+        td.setBackgroundColor(Color.BLACK);
+        translucent.setTaskDescription(td);
+
+        assertEquals(0, task.getTaskDescription().getTopOpaqueBackgroundColor());
+    }
+
+    @Test
     public void testIsForceExcludedFromRecents_defaultFalse() {
         final Task task = createTask(mDisplayContent);
         assertFalse(task.isForceExcludedFromRecents());

@@ -1938,6 +1938,12 @@ public class ActivityManager {
          */
         @Appearance
         private int mTopOpaqueSystemBarsAppearance;
+        /**
+         * Similar to {@link TaskDescription#mColorBackground}, but is taken from the topmost fully
+         * opaque (i.e. non transparent) activity in the task.
+         */
+        @ColorInt
+        private int mTopOpaqueBackgroundColor;
         private boolean mEnsureStatusBarContrastWhenTransparent;
         private boolean mEnsureNavigationBarContrastWhenTransparent;
         private int mResizeMode;
@@ -2219,6 +2225,7 @@ public class ActivityManager {
             mNavigationBarColor = other.mNavigationBarColor;
             mSystemBarsAppearance = other.mSystemBarsAppearance;
             mTopOpaqueSystemBarsAppearance = other.mTopOpaqueSystemBarsAppearance;
+            mTopOpaqueBackgroundColor = other.mTopOpaqueBackgroundColor;
             mEnsureStatusBarContrastWhenTransparent = other.mEnsureStatusBarContrastWhenTransparent;
             mEnsureNavigationBarContrastWhenTransparent =
                     other.mEnsureNavigationBarContrastWhenTransparent;
@@ -2254,6 +2261,9 @@ public class ActivityManager {
             }
             if (other.mTopOpaqueSystemBarsAppearance != 0) {
                 mTopOpaqueSystemBarsAppearance = other.mTopOpaqueSystemBarsAppearance;
+            }
+            if (other.mTopOpaqueBackgroundColor != 0) {
+                mTopOpaqueBackgroundColor = other.mTopOpaqueBackgroundColor;
             }
 
             mEnsureStatusBarContrastWhenTransparent = other.mEnsureStatusBarContrastWhenTransparent;
@@ -2582,6 +2592,23 @@ public class ActivityManager {
         }
 
         /**
+         * Background color of the topmost activity that fills the task, or 0 if none sets one.
+         * Unlike {@link #getBackgroundColor()}, a translucent activity on top does not change it.
+         * @hide
+         */
+        @ColorInt
+        public int getTopOpaqueBackgroundColor() {
+            return mTopOpaqueBackgroundColor;
+        }
+
+        /**
+         * @hide
+         */
+        public void setTopOpaqueBackgroundColor(@ColorInt int topOpaqueBackgroundColor) {
+            mTopOpaqueBackgroundColor = topOpaqueBackgroundColor;
+        }
+
+        /**
          * @hide
          */
         public boolean getEnsureNavigationBarContrastWhenTransparent() {
@@ -2708,6 +2735,7 @@ public class ActivityManager {
             dest.writeInt(mNavigationBarColor);
             dest.writeInt(mSystemBarsAppearance);
             dest.writeInt(mTopOpaqueSystemBarsAppearance);
+            dest.writeInt(mTopOpaqueBackgroundColor);
             dest.writeBoolean(mEnsureStatusBarContrastWhenTransparent);
             dest.writeBoolean(mEnsureNavigationBarContrastWhenTransparent);
             dest.writeInt(mResizeMode);
@@ -2734,6 +2762,7 @@ public class ActivityManager {
             mNavigationBarColor = source.readInt();
             mSystemBarsAppearance = source.readInt();
             mTopOpaqueSystemBarsAppearance = source.readInt();
+            mTopOpaqueBackgroundColor = source.readInt();
             mEnsureStatusBarContrastWhenTransparent = source.readBoolean();
             mEnsureNavigationBarContrastWhenTransparent = source.readBoolean();
             mResizeMode = source.readInt();
@@ -2768,7 +2797,8 @@ public class ActivityManager {
                     + " minWidth: " + mMinWidth + " minHeight: " + mMinHeight
                     + " colorBackgrounFloating: " + mColorBackgroundFloating
                     + " systemBarsAppearance: " + mSystemBarsAppearance
-                    + " topOpaqueSystemBarsAppearance: " + mTopOpaqueSystemBarsAppearance;
+                    + " topOpaqueSystemBarsAppearance: " + mTopOpaqueSystemBarsAppearance
+                    + " topOpaqueBackgroundColor: " + mTopOpaqueBackgroundColor;
         }
 
         @Override
@@ -2793,6 +2823,7 @@ public class ActivityManager {
             result = result * 31 + mNavigationBarColor;
             result = result * 31 + mSystemBarsAppearance;
             result = result * 31 + mTopOpaqueSystemBarsAppearance;
+            result = result * 31 + mTopOpaqueBackgroundColor;
             result = result * 31 + (mEnsureStatusBarContrastWhenTransparent ? 1 : 0);
             result = result * 31 + (mEnsureNavigationBarContrastWhenTransparent ? 1 : 0);
             result = result * 31 + mResizeMode;
@@ -2818,6 +2849,7 @@ public class ActivityManager {
                     && mNavigationBarColor == other.mNavigationBarColor
                     && mSystemBarsAppearance == other.mSystemBarsAppearance
                     && mTopOpaqueSystemBarsAppearance == other.mTopOpaqueSystemBarsAppearance
+                    && mTopOpaqueBackgroundColor == other.mTopOpaqueBackgroundColor
                     && mEnsureStatusBarContrastWhenTransparent
                             == other.mEnsureStatusBarContrastWhenTransparent
                     && mEnsureNavigationBarContrastWhenTransparent

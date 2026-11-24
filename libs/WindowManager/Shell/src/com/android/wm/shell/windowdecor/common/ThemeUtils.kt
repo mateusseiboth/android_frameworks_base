@@ -26,6 +26,7 @@ import android.graphics.Color
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
+import com.android.wm.shell.R
 import com.android.wm.shell.dagger.WMSingleton
 import javax.inject.Inject
 
@@ -84,7 +85,7 @@ constructor(private val context: Context) {
     fun getAppTheme(description: TaskDescription): Theme {
         // TODO: use app's uiMode to find its actual light/dark value. It needs to be added to the
         //   TaskInfo/TaskDescription.
-        val backgroundColor = description.backgroundColor
+        val backgroundColor = findAppBackgroundColor(description)
         if (backgroundColor == Color.TRANSPARENT) {
             return systemTheme
         }
@@ -93,6 +94,19 @@ constructor(private val context: Context) {
         } else {
             Theme.LIGHT
         }
+    }
+
+    /**
+     * The background color the theme follows: the topmost opaque activity's when the device
+     * enables it and the task has one, otherwise the task's.
+     */
+    @ColorInt
+    private fun findAppBackgroundColor(description: TaskDescription): Int {
+        val isTopOpaqueEnabled =
+            context.resources.getBoolean(R.bool.config_windowDecorThemeFromTopOpaqueBackground)
+        return description.topOpaqueBackgroundColor.takeIf {
+            isTopOpaqueEnabled && it != Color.TRANSPARENT
+        } ?: description.backgroundColor
     }
 
     /**
