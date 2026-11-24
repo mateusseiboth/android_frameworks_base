@@ -44,6 +44,7 @@ import androidx.annotation.StyleRes;
 import com.android.systemui.Dependency;
 import com.android.systemui.animation.DialogTransitionAnimator;
 import com.android.systemui.broadcast.BroadcastDispatcher;
+import com.android.systemui.common.ui.view.MaterialFocusRings;
 import com.android.systemui.dagger.qualifiers.Application;
 import com.android.systemui.res.R;
 import com.android.systemui.util.DialogKt;
@@ -319,6 +320,7 @@ public class SystemUIDialog extends AlertDialog {
         for (int i = 0; i < mOnCreateRunnables.size(); i++) {
             mOnCreateRunnables.get(i).run();
         }
+        MaterialFocusRings.applyToDialogButtons(this);
         View decorView = window.getDecorView();
         if (decorView instanceof ViewGroup decorViewGroup) {
             decorViewGroup.addView(

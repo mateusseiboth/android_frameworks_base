@@ -41,4 +41,26 @@
     <!-- Tile specs offered in the quick settings edit mode besides quick_settings_tiles_stock,
          comma separated (for example "ime", the input method tile). -->
     <string name="config_quickSettingsExtraStockTiles" translatable="false"></string>
+
+    <!-- Whether keyboard focus shows Material 3 focus rings on the notification action, expand
+         and smart reply buttons, dialog buttons, the quick settings edit mode top bar and the
+         inline power menu. -->
+    <bool name="config_materialFocusRings">false</bool>
+
+    <!-- Stroke width of the Material 3 focus rings. -->
+    <dimen name="material_focus_ring_stroke_width">3dp</dimen>
+
+    <!-- Gap between a focused element and its Material 3 focus ring. -->
+    <dimen name="material_focus_ring_gap">2dp</dimen>
+
+    <!-- Corner radius of a notification action button's focus ring when the theme gives the
+         buttons no corner radius. -->
+    <dimen name="notification_fallback_focus_ring_radius">4dp</dimen>
+
+    <!-- Vertical inset of the smart reply chip inside its button, as in
+         notification_2025_smart_reply_button_background. -->
+    <dimen name="notification_2025_smart_reply_button_inset">8dp</dimen>
+
+    <!-- Tag holding the focus ring drawable a view got from MaterialFocusRings. -->
+    <item type="id" name="material_focus_ring" />
 </resources>

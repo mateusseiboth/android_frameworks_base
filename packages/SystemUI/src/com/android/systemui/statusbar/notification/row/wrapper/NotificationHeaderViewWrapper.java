@@ -41,6 +41,7 @@ import com.android.app.animation.Interpolators;
 import com.android.internal.widget.CachingIconView;
 import com.android.internal.widget.NotificationCloseButton;
 import com.android.internal.widget.NotificationExpandButton;
+import com.android.systemui.common.ui.view.MaterialFocusRings;
 import com.android.systemui.res.R;
 import com.android.systemui.statusbar.TransformableView;
 import com.android.systemui.statusbar.ViewTransformationHelper;
@@ -156,6 +157,7 @@ public class NotificationHeaderViewWrapper extends NotificationViewWrapper imple
         mHeaderText = mView.findViewById(com.android.internal.R.id.header_text);
         mAppNameText = mView.findViewById(com.android.internal.R.id.app_name_text);
         mExpandButton = mView.findViewById(com.android.internal.R.id.expand_button);
+        MaterialFocusRings.applyToNotificationExpandButton(mExpandButton);
         mAltExpandTarget = mView.findViewById(com.android.internal.R.id.alternate_expand_target);
         mIconContainer = mView.findViewById(com.android.internal.R.id.conversation_icon_container);
         mWorkProfileImage = mView.findViewById(com.android.internal.R.id.profile_badge);

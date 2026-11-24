@@ -42,6 +42,7 @@ import android.view.ViewGroup
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction
 import android.widget.Button
+import com.android.systemui.common.ui.view.MaterialFocusRings
 import com.android.systemui.plugins.ActivityStarter
 import com.android.systemui.res.R
 import com.android.systemui.shared.system.ActivityManagerWrapper
@@ -440,6 +441,7 @@ constructor(
         val button =
             LayoutInflater.from(parent.context)
                 .inflate(R.layout.notification_2025_smart_action_button, parent, false) as Button
+        MaterialFocusRings.applyToSmartReplyButton(button)
 
         button.apply {
             text = action.title
@@ -537,6 +539,7 @@ constructor(
         val button =
             LayoutInflater.from(parent.context)
                 .inflate(R.layout.notification_2025_smart_reply_button, parent, false) as Button
+        MaterialFocusRings.applyToSmartReplyButton(button)
 
         button.apply {
             text = choice
