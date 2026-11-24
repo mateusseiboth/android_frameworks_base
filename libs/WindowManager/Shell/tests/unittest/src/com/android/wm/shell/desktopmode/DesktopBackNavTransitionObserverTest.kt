@@ -85,17 +85,20 @@ class DesktopBackNavTransitionObserverTest : ShellTestCase() {
         whenever(userRepositories.current).thenReturn(taskRepository)
         whenever(userRepositories.getProfile(anyInt())).thenReturn(taskRepository)
 
-        transitionObserver =
-            DesktopBackNavTransitionObserver(
-                userRepositories,
-                mixedHandler,
-                backAnimationController,
-                desksOrganizer,
-                transitions,
-                desktopState,
-                shellInit,
-            )
+        transitionObserver = createObserver(minimizeOnBackClose = false)
     }
+
+    private fun createObserver(minimizeOnBackClose: Boolean) =
+        DesktopBackNavTransitionObserver(
+            userRepositories,
+            mixedHandler,
+            backAnimationController,
+            desksOrganizer,
+            transitions,
+            desktopState,
+            shellInit,
+            minimizeOnBackClose,
+        )
 
     @Test
     @EnableFlags(Flags.FLAG_ENABLE_DESKTOP_WINDOWING_BACK_NAVIGATION)
@@ -165,6 +168,60 @@ class DesktopBackNavTransitionObserverTest : ShellTestCase() {
                 isLastTask = false,
             )
         verify(mixedHandler).addPendingMixedTransition(pendingTransition)
+    }
+
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_DESKTOP_WINDOWING_BACK_NAVIGATION)
+    fun backNavigation_withCloseTransition_minimizeOnBackClose_keepsTaskInDesk() {
+        transitionObserver = createObserver(minimizeOnBackClose = true)
+        val task = createTaskInfo(1)
+        val deskId = 0
+        whenever(taskRepository.getDeskIdForTask(task.taskId)).thenReturn(deskId)
+        whenever(taskRepository.isActiveTask(task.taskId)).thenReturn(true)
+        whenever(taskRepository.isClosingTask(task.taskId)).thenReturn(false)
+        whenever(backAnimationController.latestTriggerBackTask).thenReturn(task.taskId)
+
+        transitionObserver.onTransitionReady(
+            transition = mock(),
+            info = createBackNavigationTransition(task, TRANSIT_CLOSE),
+        )
+
+        verify(taskRepository).addBackClosedTask(task.taskId)
+    }
+
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_DESKTOP_WINDOWING_BACK_NAVIGATION)
+    fun backNavigation_withCloseTransition_configOff_doesNotKeepTask() {
+        val task = createTaskInfo(1)
+        val deskId = 0
+        whenever(taskRepository.getDeskIdForTask(task.taskId)).thenReturn(deskId)
+        whenever(taskRepository.isActiveTask(task.taskId)).thenReturn(true)
+        whenever(taskRepository.isClosingTask(task.taskId)).thenReturn(false)
+        whenever(backAnimationController.latestTriggerBackTask).thenReturn(task.taskId)
+
+        transitionObserver.onTransitionReady(
+            transition = mock(),
+            info = createBackNavigationTransition(task, TRANSIT_CLOSE),
+        )
+
+        verify(taskRepository, never()).addBackClosedTask(any())
+    }
+
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_DESKTOP_WINDOWING_BACK_NAVIGATION)
+    fun backNavigation_toBack_minimizeOnBackClose_doesNotKeepTask() {
+        transitionObserver = createObserver(minimizeOnBackClose = true)
+        val task = createTaskInfo(1)
+        val deskId = 0
+        whenever(taskRepository.getDeskIdForTask(task.taskId)).thenReturn(deskId)
+        whenever(taskRepository.isActiveTask(task.taskId)).thenReturn(true)
+
+        transitionObserver.onTransitionReady(
+            transition = mock(),
+            info = createBackNavigationTransition(task),
+        )
+
+        verify(taskRepository, never()).addBackClosedTask(any())
     }
 
     @Test

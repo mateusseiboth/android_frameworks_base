@@ -620,6 +620,19 @@ class DesktopTaskChangeListenerTest : ShellTestCase() {
         verify(desktopUserRepositories.current, times(1)).removeTask(task.taskId)
     }
 
+    @Test
+    fun onNonTransitionTaskClosing_backClosedTask_keepsTaskInRepo() {
+        val task = createFreeformTask().apply { isVisible = false }
+        desktopTaskChangeListener.onTaskOpening(task)
+
+        whenever(desktopUserRepositories.current.isVisibleTask(task.taskId)).thenReturn(false)
+        whenever(desktopUserRepositories.current.takeRemovalSkip(task.taskId)).thenReturn(true)
+        desktopTaskChangeListener.onNonTransitionTaskClosing(task)
+
+        verify(desktopUserRepositories.current, never()).removeClosingTask(task.taskId)
+        verify(desktopUserRepositories.current, never()).removeTask(task.taskId)
+    }
+
     private fun createWallpaperTaskInfo(windowingMode: Int): RunningTaskInfo =
         TestRunningTaskInfoBuilder()
             .setBaseIntent(

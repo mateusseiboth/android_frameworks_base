@@ -88,6 +88,9 @@ class DesktopRepository(
 
     private val rememberedBoundsRatioByPackageName = ArrayMap<String, RectF>()
 
+    /* Tasks closed by back navigation that stay minimized in their desk. */
+    private val backClosedTasks = BackClosedTasks()
+
     // TODO - b/365873835: Add this to persistent repository.
     private val preservedDisplaysByUniqueId = ArrayMap<String, DesktopDisplay>()
 
@@ -1055,6 +1058,18 @@ class DesktopRepository(
     }
 
     /**
+     * Keeps [taskId], which back navigation closed while minimizing it, in its desk: the next
+     * removal of the task, when it vanishes from the window hierarchy, is skipped.
+     */
+    fun addBackClosedTask(taskId: Int) {
+        logD("addBackClosedTask: taskId=%d", taskId)
+        backClosedTasks.add(taskId)
+    }
+
+    /** Returns true once if the removal of [taskId] must be skipped, see [addBackClosedTask]. */
+    fun takeRemovalSkip(taskId: Int): Boolean = backClosedTasks.takeRemovalSkip(taskId)
+
+    /**
      * Unminimizes the task for [taskId] and [displayId].
      *
      * TODO: b/389960283 - consider using [unminimizeTaskFromDesk] instead.
@@ -1065,6 +1080,7 @@ class DesktopRepository(
 
     private fun unminimizeTaskFromDesk(deskId: Int, taskId: Int) {
         logD("Unminimize Task from desk: deskId=%d, taskId=%d", deskId, taskId)
+        backClosedTasks.remove(taskId)
         if (desktopData.getDesk(deskId)?.minimizedTasks?.remove(taskId) != true) {
             logW("Unminimize Task: deskId=%d, taskId=%d, no task data", deskId, taskId)
         }
@@ -1336,6 +1352,7 @@ class DesktopRepository(
         dumpDesktopTaskData(pw, innerPrefix)
         pw.println("${innerPrefix}activeTasksListeners=${activeTasksListeners.size}")
         pw.println("${innerPrefix}visibleTasksListeners=${visibleTasksListeners.size}")
+        pw.println("${innerPrefix}backClosedTasks=$backClosedTasks")
         if (Flags.enableRememberedBounds()) {
             pw.println("${innerPrefix}rememberedBoundsRatioByPackageName:")
             rememberedBoundsRatioByPackageName.forEach { (packageName, bounds) ->

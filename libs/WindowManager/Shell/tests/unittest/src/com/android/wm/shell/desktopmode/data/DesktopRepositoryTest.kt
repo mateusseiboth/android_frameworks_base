@@ -1269,6 +1269,30 @@ class DesktopRepositoryTest : ShellTestCase() {
     }
 
     @Test
+    fun addBackClosedTask_skipsNextRemovalOnce() {
+        val taskId = 1
+        repo.addTask(DEFAULT_DISPLAY, taskId, isVisible = false, taskBounds = TEST_TASK_BOUNDS)
+        repo.minimizeTask(DEFAULT_DISPLAY, taskId)
+
+        repo.addBackClosedTask(taskId)
+
+        assertThat(repo.takeRemovalSkip(taskId)).isTrue()
+        assertThat(repo.takeRemovalSkip(taskId)).isFalse()
+    }
+
+    @Test
+    fun addBackClosedTask_unminimized_noRemovalSkip() {
+        val taskId = 1
+        repo.addTask(DEFAULT_DISPLAY, taskId, isVisible = false, taskBounds = TEST_TASK_BOUNDS)
+        repo.minimizeTask(DEFAULT_DISPLAY, taskId)
+        repo.addBackClosedTask(taskId)
+
+        repo.unminimizeTask(DEFAULT_DISPLAY, taskId)
+
+        assertThat(repo.takeRemovalSkip(taskId)).isFalse()
+    }
+
+    @Test
     fun removeTask_updatesTaskVisibility() {
         repo.addDesk(displayId = THIRD_DISPLAY, deskId = THIRD_DISPLAY)
         val taskId = 1

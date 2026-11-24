@@ -43,6 +43,7 @@ import com.android.internal.logging.UiEventLogger;
 import com.android.internal.policy.DesktopModeCompatPolicy;
 import com.android.internal.util.LatencyTracker;
 import com.android.launcher3.icons.IconProvider;
+import com.android.wm.shell.R;
 import com.android.wm.shell.RootDisplayAreaOrganizer;
 import com.android.wm.shell.RootTaskDisplayAreaOrganizer;
 import com.android.wm.shell.ShellTaskOrganizer;
@@ -1678,6 +1679,7 @@ public abstract class WMShellModule {
     @WMSingleton
     @Provides
     static Optional<DesktopBackNavTransitionObserver> provideDesktopBackNavTransitionObserver(
+            Context context,
             Optional<DesktopUserRepositories> desktopUserRepositories,
             Optional<DesktopMixedTransitionHandler> desktopMixedTransitionHandler,
             Optional<BackAnimationController> backAnimationController,
@@ -1695,7 +1697,9 @@ public abstract class WMShellModule {
                                         desksOrganizer,
                                         transitions,
                                         desktopState,
-                                        shellInit)));
+                                        shellInit,
+                                        context.getResources().getBoolean(
+                                                R.bool.config_minimizeDesktopWindowOnBackClose))));
     }
 
     @WMSingleton

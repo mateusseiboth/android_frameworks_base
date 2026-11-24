@@ -187,6 +187,11 @@ class DesktopTaskChangeListener(
         // DesktopTasksController incorrectly trying to restore the tasks when the desk is
         // reactivated next time. See b/361419732.
         val repository: DesktopRepository = desktopUserRepositories.getProfile(taskInfo.userId)
+        // A window closed by back navigation stays minimized in its desk.
+        if (repository.takeRemovalSkip(taskInfo.taskId)) {
+            logD("onNonTransitionTaskClosing keeping back-closed taskId=%d", taskInfo.taskId)
+            return
+        }
         if (
             repository.getDeskIdForTask(taskInfo.taskId) != null &&
                 !repository.isVisibleTask(taskInfo.taskId)
