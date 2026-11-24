@@ -112,6 +112,11 @@ class FullscreenHeaderViewHolder(
     private val appIconImageView: ImageView = rootView.requireViewById(R.id.application_icon)
     private val expandMenuErrorImageView: ImageView =
         rootView.requireViewById(R.id.expand_menu_error)
+    private val captionSlideAnimator =
+        FullscreenHeaderSlideAnimator(
+            captionView,
+            isAnimated = context.resources.getBoolean(R.bool.config_animateFullscreenHeader),
+        )
 
     /** The width of the exit fullscreen button view. */
     val exitFullscreenButtonWidth: Int
@@ -509,8 +514,7 @@ class FullscreenHeaderViewHolder(
     }
 
     private fun setCaptionVisibility(visible: Boolean) {
-        val v = if (visible) View.VISIBLE else View.GONE
-        captionView.visibility = v
+        captionSlideAnimator.setVisible(visible)
     }
 
     override fun onHandleMenuOpened() {}
@@ -649,6 +653,7 @@ class FullscreenHeaderViewHolder(
     override fun close() {
         // Should not fire long press events after closing the window decoration.
         exitFullscreenWindowButton.cancelLongPress()
+        captionSlideAnimator.cancel()
     }
 
     @OptIn(ExperimentalStdlibApi::class)

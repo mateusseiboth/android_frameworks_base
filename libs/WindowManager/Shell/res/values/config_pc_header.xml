@@ -19,4 +19,8 @@
          the header hidden under the status bar). When true, an immersive app keeps its header
          when maximized and the layout menu does not offer the immersive option. -->
     <bool name="config_disableDesktopFullImmersive">false</bool>
+
+    <!-- Whether the fullscreen header slides down from the top edge when shown and back up when
+         hidden, instead of appearing and disappearing at once. -->
+    <bool name="config_animateFullscreenHeader">false</bool>
 </resources>
