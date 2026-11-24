@@ -16,6 +16,7 @@
 
 package com.android.wm.shell.windowdecor
 
+import android.app.ActivityManager
 import android.app.ActivityManager.RunningTaskInfo
 import android.app.WindowConfiguration.WINDOWING_MODE_FREEFORM
 import android.content.res.Resources
@@ -28,6 +29,8 @@ import android.testing.TestableLooper
 import android.view.Display.DEFAULT_DISPLAY
 import android.view.InsetsState
 import android.view.WindowInsets.Type.statusBars
+import android.view.WindowInsetsController.APPEARANCE_TRANSPARENT_CAPTION_BAR_BACKGROUND
+import android.view.WindowManager.LayoutParams.INPUT_FEATURE_SPY
 import android.window.DisplayAreaInfo
 import android.window.WindowContainerToken
 import androidx.test.filters.SmallTest
@@ -237,6 +240,50 @@ class DefaultWindowDecorationTests : ShellTestCase() {
         assertThat(relayoutParams.captionType)
             .isEqualTo(CaptionController.CaptionType.APP_HANDLE)
     }
+
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_FULLSCREEN_WINDOW_CONTROLS)
+    fun relayoutParams_customCaptionInFullscreen_withCustomHeader_insetsAndSpiesLikeAppHeader() {
+        mContext.orCreateTestableResources.addOverride(
+            R.bool.config_keepCustomHeaderInFullscreen,
+            true,
+        )
+        val task = createCustomCaptionFullscreenTask()
+        val decoration = setUpWindowDecoration(task, createDesktopFirstOrganizer(task.displayId))
+
+        val relayoutParams = decoration.getRelayoutParams(task)
+
+        assertThat(relayoutParams.captionType)
+            .isEqualTo(CaptionController.CaptionType.FULLSCREEN_HEADER)
+        assertTrue(relayoutParams.isInsetSource)
+        assertThat(relayoutParams.inputFeatures and INPUT_FEATURE_SPY).isEqualTo(INPUT_FEATURE_SPY)
+    }
+
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_FULLSCREEN_WINDOW_CONTROLS)
+    fun relayoutParams_customCaptionInFullscreen_withoutCustomHeader_isNotInsetSource() {
+        mContext.orCreateTestableResources.addOverride(
+            R.bool.config_keepCustomHeaderInFullscreen,
+            false,
+        )
+        val task = createCustomCaptionFullscreenTask()
+        val decoration = setUpWindowDecoration(task, createDesktopFirstOrganizer(task.displayId))
+
+        val relayoutParams = decoration.getRelayoutParams(task)
+
+        assertFalse(relayoutParams.isInsetSource)
+        assertThat(relayoutParams.inputFeatures and INPUT_FEATURE_SPY).isEqualTo(0)
+    }
+
+    private fun createCustomCaptionFullscreenTask(): RunningTaskInfo =
+        createFullscreenTask().apply {
+            taskDescription =
+                (taskDescription ?: ActivityManager.TaskDescription()).apply {
+                    topOpaqueSystemBarsAppearance =
+                        topOpaqueSystemBarsAppearance or
+                            APPEARANCE_TRANSPARENT_CAPTION_BAR_BACKGROUND
+                }
+        }
 
     private fun createDesktopFirstOrganizer(displayId: Int): RootTaskDisplayAreaOrganizer {
         val displayAreaInfo =

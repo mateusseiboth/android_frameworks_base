@@ -27,4 +27,9 @@
     <!-- Whether split-screen tasks of a desktop-first display get the fullscreen header (app chip,
          exit and close) like fullscreen tasks, instead of the app handle. -->
     <bool name="config_showFullscreenHeaderInSplitScreen">false</bool>
+
+    <!-- Whether an app that draws its own caption (transparent caption bar appearance, such as a
+         browser tab strip) keeps it under the fullscreen header of a desktop-first display: the
+         header turns transparent and gives the app the caption insets, as in a desktop window. -->
+    <bool name="config_keepCustomHeaderInFullscreen">false</bool>
 </resources>

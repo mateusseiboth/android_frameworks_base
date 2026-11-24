@@ -24,6 +24,10 @@ class FullscreenHeaderRuleTest {
 
     private val withSplitHeader = FullscreenHeaderRule(isSplitScreenHeaderEnabled = true)
     private val withoutSplitHeader = FullscreenHeaderRule(isSplitScreenHeaderEnabled = false)
+    private val withCustomHeader =
+        FullscreenHeaderRule(isSplitScreenHeaderEnabled = false, isCustomHeaderEnabled = true)
+    private val withoutCustomHeader =
+        FullscreenHeaderRule(isSplitScreenHeaderEnabled = false, isCustomHeaderEnabled = false)
 
     @Test
     fun hasFullscreenHeader_fullscreenTaskOnDesktopFirstDisplay_isTrue() {
@@ -76,6 +80,46 @@ class FullscreenHeaderRuleTest {
                 isDesktopFirstDisplay = false,
                 isFullscreen = false,
                 isInSplitScreen = true,
+            )
+        )
+    }
+
+    @Test
+    fun hasCustomHeader_transparentCaptionBarOnFullscreenHeader_whenEnabled_isTrue() {
+        assertTrue(
+            withCustomHeader.hasCustomHeader(
+                isFullscreenHeader = true,
+                isTransparentCaptionBar = true,
+            )
+        )
+    }
+
+    @Test
+    fun hasCustomHeader_transparentCaptionBarOnFullscreenHeader_whenDisabled_isFalse() {
+        assertFalse(
+            withoutCustomHeader.hasCustomHeader(
+                isFullscreenHeader = true,
+                isTransparentCaptionBar = true,
+            )
+        )
+    }
+
+    @Test
+    fun hasCustomHeader_opaqueCaptionBar_isFalse() {
+        assertFalse(
+            withCustomHeader.hasCustomHeader(
+                isFullscreenHeader = true,
+                isTransparentCaptionBar = false,
+            )
+        )
+    }
+
+    @Test
+    fun hasCustomHeader_otherCaption_isFalse() {
+        assertFalse(
+            withCustomHeader.hasCustomHeader(
+                isFullscreenHeader = false,
+                isTransparentCaptionBar = true,
             )
         )
     }

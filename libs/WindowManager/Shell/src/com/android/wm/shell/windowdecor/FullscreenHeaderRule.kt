@@ -15,8 +15,14 @@
  */
 package com.android.wm.shell.windowdecor
 
-/** Which tasks of a desktop-first display get the fullscreen header (app chip, exit, close). */
-class FullscreenHeaderRule(private val isSplitScreenHeaderEnabled: Boolean) {
+/**
+ * Which tasks of a desktop-first display get the fullscreen header (app chip, exit, close), and
+ * whether that header leaves its area to an app that draws its own caption.
+ */
+class FullscreenHeaderRule(
+    private val isSplitScreenHeaderEnabled: Boolean,
+    private val isCustomHeaderEnabled: Boolean = false,
+) {
 
     /**
      * Whether a task gets the fullscreen header: a fullscreen task on a desktop-first display, and
@@ -27,6 +33,13 @@ class FullscreenHeaderRule(private val isSplitScreenHeaderEnabled: Boolean) {
         isFullscreen: Boolean,
         isInSplitScreen: Boolean,
     ): Boolean = isDesktopFirstDisplay && (isFullscreen || isSplitScreenWithHeader(isInSplitScreen))
+
+    /**
+     * Whether a fullscreen header keeps the app's custom caption: with [isCustomHeaderEnabled], an
+     * app asking for a transparent caption bar draws in the header area, as in a desktop window.
+     */
+    fun hasCustomHeader(isFullscreenHeader: Boolean, isTransparentCaptionBar: Boolean): Boolean =
+        isCustomHeaderEnabled && isFullscreenHeader && isTransparentCaptionBar
 
     private fun isSplitScreenWithHeader(isInSplitScreen: Boolean): Boolean =
         isSplitScreenHeaderEnabled && isInSplitScreen

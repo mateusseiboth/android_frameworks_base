@@ -226,11 +226,7 @@ constructor(
     val manageWindowsMenuController: ManageWindowsMenuController?
         get() = captionController?.manageWindowsMenuController
 
-    private val fullscreenHeaderRule =
-        FullscreenHeaderRule(
-            isSplitScreenHeaderEnabled =
-                context.resources.getBoolean(R.bool.config_showFullscreenHeaderInSplitScreen)
-        )
+    private val fullscreenHeaderRule = buildFullscreenHeaderRule(context)
 
     private val appTheme = { taskInfo: RunningTaskInfo ->
         decorThemeUtilFactory.create(context).getAppTheme(taskInfo)
@@ -512,6 +508,13 @@ constructor(
             }
         val isAppHeader = captionType == CaptionController.CaptionType.APP_HEADER
         val isAppHandle = captionType == CaptionController.CaptionType.APP_HANDLE
+        // A fullscreen header that leaves its area to the app's own caption takes the app header's
+        // caption insets and input handling.
+        val isCustomFullscreenHeader =
+            fullscreenHeaderRule.hasCustomHeader(
+                isFullscreenHeader = captionType == CaptionController.CaptionType.FULLSCREEN_HEADER,
+                isTransparentCaptionBar = taskInfo.isTransparentCaptionBarAppearance,
+            )
 
         // Allow the handle view to be delayed since the handle is just a small addition to the
         // window, whereas the header cannot be delayed because it is expected to be visible from
@@ -522,11 +525,15 @@ constructor(
             !splitScreenController.isLeftRightSplit &&
                 (splitScreenController.getSplitPosition(taskInfo.taskId) ==
                     SPLIT_POSITION_BOTTOM_OR_RIGHT)
-        val isInsetSource = (isAppHeader && !inFullImmersive) || isPinnedLayer || isBottomSplit
+        val isInsetSource =
+            (isAppHeader && !inFullImmersive) ||
+                isPinnedLayer ||
+                isBottomSplit ||
+                isCustomFullscreenHeader
         var inputFeatures = 0
         var insetSourceFlags = 0
         var shouldSetAppBounds = false
-        if (isAppHeader || isPinnedLayer) {
+        if (isAppHeader || isPinnedLayer || isCustomFullscreenHeader) {
             if (taskInfo.isTransparentCaptionBarAppearance) {
                 // The app is requesting to customize the caption bar, which means input on
                 // customizable/exclusion regions must go to the app instead of to the system.
