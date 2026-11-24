@@ -75,6 +75,7 @@ import com.android.systemui.statusbar.phone.domain.interactor.DarkIconInteractor
 import com.android.systemui.statusbar.phone.domain.interactor.IsAreaDark
 import com.android.systemui.statusbar.phone.domain.interactor.LightsOutInteractor
 import com.android.systemui.statusbar.pipeline.battery.ui.viewmodel.BatteryViewModel
+import com.android.systemui.statusbar.pipeline.shared.domain.interactor.DesktopStatusBarPointerInteractor
 import com.android.systemui.statusbar.pipeline.shared.domain.interactor.HomeStatusBarIconBlockListInteractor
 import com.android.systemui.statusbar.pipeline.shared.domain.interactor.HomeStatusBarInteractor
 import com.android.systemui.statusbar.pipeline.shared.domain.interactor.StatusBarVisibilityInteractor
@@ -316,6 +317,7 @@ constructor(
     private val scrollToTopInteractor: ScrollToTopInteractor,
     private val headsUpNotificationInteractor: HeadsUpNotificationInteractor,
     private val calendarPopupInteractor: CalendarPopupInteractor,
+    private val desktopStatusBarPointerInteractor: DesktopStatusBarPointerInteractor,
 ) : HomeStatusBarViewModel, HydratedActivatable(enableEnqueuedActivations = true) {
 
     val logger = loggerFactory.getOrCreate(logBufferName(thisDisplayId), 60)
@@ -520,6 +522,7 @@ constructor(
         // TODO: b/478352392 - Consider achieving the same effect by hiding InputMethodPicker upon
         // "out-of-bounds click" instead, via SceneContainerViewModel.onEmptySpaceMotionEvent().
         imeIndicatorChipInteractor.hideInputMethodPicker(thisDisplayId)
+        desktopStatusBarPointerInteractor.onEmptyAreaTapped(thisDisplayId)
     }
 
     override fun onStatusBarLongPressed() {

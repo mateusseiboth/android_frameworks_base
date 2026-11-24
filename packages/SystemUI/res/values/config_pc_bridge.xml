@@ -18,4 +18,8 @@
     <!-- Whether collapsing the panels (StatusBarManager#collapsePanels, e.g. a click on the
          taskbar) also closes the open status bar quick action popup (calendar, chip popups). -->
     <bool name="config_collapsePanelsClosesQuickActions">false</bool>
+
+    <!-- Whether a tap on an empty part of the desktop status bar closes the taskbar's All Apps
+         and the launcher's floating views on that display. -->
+    <bool name="config_statusBarTapClosesLauncherPanels">false</bool>
 </resources>

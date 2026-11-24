@@ -46,6 +46,7 @@ import com.android.systemui.statusbar.notification.stack.domain.interactor.heads
 import com.android.systemui.statusbar.phone.domain.interactor.darkIconInteractor
 import com.android.systemui.statusbar.phone.domain.interactor.lightsOutInteractor
 import com.android.systemui.statusbar.pipeline.battery.ui.viewmodel.batteryViewModelBasedOnSettingFactory
+import com.android.systemui.statusbar.pipeline.shared.domain.interactor.desktopStatusBarPointerInteractor
 import com.android.systemui.statusbar.pipeline.shared.domain.interactor.homeStatusBarIconBlockListInteractor
 import com.android.systemui.statusbar.pipeline.shared.domain.interactor.homeStatusBarInteractor
 import com.android.systemui.statusbar.pipeline.shared.domain.interactor.statusBarVisibilityInteractor
@@ -117,6 +118,7 @@ var Kosmos.homeStatusBarViewModelFactory: (Int) -> HomeStatusBarViewModel by
                 scrollToTopInteractor = scrollToTopInteractor,
                 headsUpNotificationInteractor = headsUpNotificationInteractor,
                 calendarPopupInteractor = calendarPopupInteractor,
+                desktopStatusBarPointerInteractor = desktopStatusBarPointerInteractor,
             )
         }
     }
