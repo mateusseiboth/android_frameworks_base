@@ -29,4 +29,8 @@
     <!-- Whether a desktop window gets a new snapshot when it loses focus, so the thumbnails of
          Alt+Tab and Overview show its current content. -->
     <bool name="config_desktopSnapshotOnFocusLoss">false</bool>
+
+    <!-- Whether the desktop windows in the recent tasks, and so in Alt+Tab, are ordered by the
+         last time they had focus instead of the last time they came to the front. -->
+    <bool name="config_desktopAltTabOrdersByLastFocus">false</bool>
 </resources>

@@ -82,17 +82,20 @@ import com.android.wm.shell.common.TaskStackListenerImpl;
 import com.android.wm.shell.desktopmode.DesktopUserRepositories;
 import com.android.wm.shell.desktopmode.DesktopWallpaperActivity;
 import com.android.wm.shell.desktopmode.data.DesktopRepository;
+import com.android.wm.shell.shared.FocusTransitionListener;
 import com.android.wm.shell.shared.GroupedTaskInfo;
 import com.android.wm.shell.shared.desktopmode.FakeDesktopState;
 import com.android.wm.shell.shared.split.SplitBounds;
 import com.android.wm.shell.sysui.ShellCommandHandler;
 import com.android.wm.shell.sysui.ShellController;
 import com.android.wm.shell.sysui.ShellInit;
+import com.android.wm.shell.transition.FocusTransitionObserver;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -135,6 +138,8 @@ public class RecentTasksControllerTest extends ShellTestCase {
     private DesktopRepository mDesktopRepository;
     @Mock
     private UserManager mUserManager;
+    @Mock
+    private FocusTransitionObserver mFocusTransitionObserver;
     private FakeDesktopState mDesktopState;
     @Mock
     private DesktopModeCompatPolicy mDesktopModeCompatPolicy;
@@ -167,7 +172,8 @@ public class RecentTasksControllerTest extends ShellTestCase {
         mRecentTasksControllerReal = new RecentTasksController(mContext, mShellInit,
                 mShellController, mShellCommandHandler, mTaskStackListener, mActivityTaskManager,
                 Optional.of(mDesktopUserRepositories), mTaskStackTransitionObserver,
-                mMainExecutor, mDesktopState, mDesktopModeCompatPolicy);
+                mMainExecutor, mDesktopState, mDesktopModeCompatPolicy,
+                mFocusTransitionObserver, Optional.empty());
         mRecentTasksController = spy(mRecentTasksControllerReal);
         mShellTaskOrganizer = new ShellTaskOrganizer(mShellInit, mShellCommandHandler,
                 mRootTaskDisplayAreaOrganizer, null /* sizeCompatUI */, Optional.empty(),
@@ -452,6 +458,67 @@ public class RecentTasksControllerTest extends ShellTestCase {
         assertEquals(t2, recentTasks.get(1).getTaskInfo1());
         assertEquals(t3, recentTasks.get(2).getTaskInfo1());
         assertEquals(t4, recentTasks.get(3).getTaskInfo1());
+    }
+
+    @Test
+    public void deskFocusHistoryAbsent_doesNotListenToFocus() {
+        verify(mFocusTransitionObserver, never()).setLocalFocusTransitionListener(any(), any());
+    }
+
+    @Test
+    public void deskFocusHistoryPresent_listensToFocus() {
+        createControllerWithDeskFocusHistory(new DesktopTaskFocusHistory());
+
+        verify(mFocusTransitionObserver).setLocalFocusTransitionListener(any(), any());
+    }
+
+    @Test
+    public void testGetRecentTasks_deskFocusHistory_ordersDeskTasksByLastFocus() {
+        final DesktopTaskFocusHistory history = new DesktopTaskFocusHistory();
+        final RecentTasksController controller = createControllerWithDeskFocusHistory(history);
+        RecentTaskInfo t1 = makeTaskInfo(1);
+        RecentTaskInfo t2 = makeTaskInfo(2);
+        RecentTaskInfo t3 = makeTaskInfo(3);
+        RecentTaskInfo t4 = makeTaskInfo(4);
+        t1.lastActiveTime = 400;
+        t3.lastActiveTime = 300;
+        t4.lastActiveTime = 200;
+        setRawList(t1, t2, t3, t4);
+        when(mDesktopRepository.isActiveTask(1)).thenReturn(true);
+        when(mDesktopRepository.isActiveTask(3)).thenReturn(true);
+        when(mDesktopRepository.isActiveTask(4)).thenReturn(true);
+        history.onTaskFocused(4, 600);
+        history.onTaskFocused(1, 100);
+
+        ArrayList<GroupedTaskInfo> recentTasks =
+                controller.getRecentTasks(MAX_VALUE, RECENT_IGNORE_UNAVAILABLE, 0);
+
+        GroupedTaskInfo deskGroup = recentTasks.get(recentTasks.size() - 1);
+        assertTrue(deskGroup.isBaseType(TYPE_DESK));
+        assertEquals(t4, deskGroup.getTaskInfoList().get(0));
+        assertEquals(t3, deskGroup.getTaskInfoList().get(1));
+        assertEquals(t1, deskGroup.getTaskInfoList().get(2));
+        // Launcher orders Alt+Tab by the active time, which now is the last focus time.
+        assertEquals(600, t4.lastActiveTime);
+        assertEquals(300, t3.lastActiveTime);
+        assertEquals(100, t1.lastActiveTime);
+    }
+
+    @Test
+    public void deskFocusHistory_recordsGloballyFocusedTask() {
+        final DesktopTaskFocusHistory history = new DesktopTaskFocusHistory();
+        createControllerWithDeskFocusHistory(history);
+        final ArgumentCaptor<FocusTransitionListener> listener =
+                ArgumentCaptor.forClass(FocusTransitionListener.class);
+        verify(mFocusTransitionObserver).setLocalFocusTransitionListener(listener.capture(),
+                any());
+        final RunningTaskInfo task = new RunningTaskInfo();
+        task.taskId = 7;
+
+        listener.getValue().onFocusedTaskChanged(task, /* isFocusedOnDisplay= */ true,
+                /* isFocusedGlobally= */ true);
+
+        assertTrue(history.getLastFocusedTime(7, /* fallbackTime= */ -1) >= 0);
     }
 
     @Test
@@ -988,7 +1055,19 @@ public class RecentTasksControllerTest extends ShellTestCase {
     /**
      * Helper to create a task with a given task id.
      */
-    private RecentTaskInfo makeTaskInfo(int taskId) {
+    private RecentTasksController createControllerWithDeskFocusHistory(
+            DesktopTaskFocusHistory history) {
+        final ShellInit shellInit = new ShellInit(mMainExecutor);
+        final RecentTasksController controller = new RecentTasksController(mContext, shellInit,
+                mShellController, mShellCommandHandler, mTaskStackListener, mActivityTaskManager,
+                Optional.of(mDesktopUserRepositories), mTaskStackTransitionObserver,
+                mMainExecutor, mDesktopState, mDesktopModeCompatPolicy,
+                mFocusTransitionObserver, Optional.of(history));
+        shellInit.init();
+        return controller;
+    }
+
+        private RecentTaskInfo makeTaskInfo(int taskId) {
         RecentTaskInfo info = new RecentTaskInfo();
         info.taskId = taskId;
         info.realActivity = new ComponentName("testPackage", "testClass");
