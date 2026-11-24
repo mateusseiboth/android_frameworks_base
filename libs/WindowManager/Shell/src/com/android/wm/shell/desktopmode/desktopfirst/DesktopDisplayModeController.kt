@@ -252,6 +252,11 @@ class DesktopDisplayModeController(
             isDefaultDisplayDesktopEligible,
         )
         if (isDefaultDisplayDesktopEligible) {
+            // A PC's internal display is the desktop, with a mouse as much as with a touchpad.
+            if (desktopState.isPcDevice) {
+                logV("canDesktopFirstModeBeEnabledOnDefaultDisplay: isPcDevice=true")
+                return true
+            }
             val isExtendedDisplayEnabled = isExtendedDisplayEnabled()
             val hasExternalDisplay = hasExternalDisplay()
             logV(

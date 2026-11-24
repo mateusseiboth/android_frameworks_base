@@ -246,6 +246,28 @@ class DesktopDisplayModeControllerTest(
     }
 
     @Test
+    @EnableFlags(Flags.FLAG_ENABLE_DISPLAY_WINDOWING_MODE_SWITCHING)
+    fun targetWindowingMode_pcWithoutTouchpadOrKeyboard_isDesktopFirst() {
+        disconnectExternalDisplay()
+        desktopState.isPcDevice = true
+        desktopState.overrideDesktopModeSupportPerDisplay[DEFAULT_DISPLAY] = true
+
+        assertThat(controller.getTargetWindowingModeForDefaultDisplay())
+            .isEqualTo(WINDOWING_MODE_FREEFORM)
+    }
+
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_DISPLAY_WINDOWING_MODE_SWITCHING)
+    fun targetWindowingMode_pcNotDesktopEligible_isTouchFirst() {
+        disconnectExternalDisplay()
+        desktopState.isPcDevice = true
+        desktopState.overrideDesktopModeSupportPerDisplay[DEFAULT_DISPLAY] = false
+
+        assertThat(controller.getTargetWindowingModeForDefaultDisplay())
+            .isEqualTo(WINDOWING_MODE_FULLSCREEN)
+    }
+
+    @Test
     @EnableFlags(
         Flags.FLAG_ENABLE_DISPLAY_WINDOWING_MODE_SWITCHING,
     )

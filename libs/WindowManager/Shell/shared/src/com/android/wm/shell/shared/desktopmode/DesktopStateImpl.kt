@@ -18,6 +18,7 @@ package com.android.wm.shell.shared.desktopmode
 
 import android.content.Context
 import android.content.pm.PackageManager.FEATURE_FREEFORM_WINDOW_MANAGEMENT
+import android.content.pm.PackageManager.FEATURE_PC
 import android.hardware.display.DisplayManager
 import android.os.SystemProperties
 import android.provider.Settings
@@ -134,6 +135,8 @@ class DesktopStateImpl(context: Context) : DesktopState {
             0,
         ) != 0
     override val isFreeformEnabled: Boolean = hasFreeformFeature || hasFreeformDevOption
+
+    override val isPcDevice: Boolean = context.getPackageManager().hasSystemFeature(FEATURE_PC)
 
     override val shouldShowHomeBehindDesktop: Boolean =
         Flags.showHomeBehindDesktop() &&

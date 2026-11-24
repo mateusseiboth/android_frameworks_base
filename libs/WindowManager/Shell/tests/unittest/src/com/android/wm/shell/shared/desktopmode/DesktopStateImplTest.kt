@@ -16,6 +16,7 @@
 
 package com.android.wm.shell.shared.desktopmode
 
+import android.content.pm.PackageManager
 import android.hardware.display.DisplayManager
 import android.os.SystemProperties
 import android.platform.test.annotations.DisableFlags
@@ -94,6 +95,20 @@ class DesktopStateImplTest : ShellTestCase() {
     @After
     fun tearDown() {
         mockitoSession.finishMocking()
+    }
+
+    @Test
+    fun isPcDevice_pcFeature_returnsTrue() {
+        setPcFeature(true)
+
+        assertThat(DesktopStateImpl(context).isPcDevice).isTrue()
+    }
+
+    @Test
+    fun isPcDevice_noPcFeature_returnsFalse() {
+        setPcFeature(false)
+
+        assertThat(DesktopStateImpl(context).isPcDevice).isFalse()
     }
 
     @DisableFlags(
@@ -563,5 +578,11 @@ class DesktopStateImplTest : ShellTestCase() {
         mContext
             .getOrCreateTestableResources()
             .addOverride(R.bool.config_canInternalDisplayHostDesktops, eligible)
+    }
+
+    private fun setPcFeature(hasFeature: Boolean) {
+        val packageManager: PackageManager = mock()
+        whenever(packageManager.hasSystemFeature(PackageManager.FEATURE_PC)).thenReturn(hasFeature)
+        mContext.setMockPackageManager(packageManager)
     }
 }

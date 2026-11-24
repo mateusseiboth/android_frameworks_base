@@ -91,6 +91,13 @@ interface DesktopState {
     /** Whether the home screen should be shown behind freeform tasks in the desktop. */
     val shouldShowHomeBehindDesktop: Boolean
 
+    /**
+     * Whether the device is a PC ([android.content.pm.PackageManager.FEATURE_PC]): its internal
+     * display is the desktop whatever input devices are attached.
+     */
+    val isPcDevice: Boolean
+        get() = false
+
     /** Clean's up any registered listeners */
     fun destroy() {}
 
