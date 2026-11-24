@@ -19,7 +19,9 @@ package com.android.systemui.keyboard.shortcut.ui
 import android.content.Context
 import android.content.Context.INPUT_SERVICE
 import android.content.applicationContext
+import android.content.res.Configuration
 import android.hardware.input.fakeInputManager
+import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -42,6 +44,7 @@ import com.android.systemui.kosmos.runTest
 import com.android.systemui.kosmos.testCase
 import com.android.systemui.kosmos.testDispatcher
 import com.android.systemui.plugins.activityStarter
+import com.android.systemui.res.R
 import com.android.systemui.runOnMainThreadAndWaitForIdleSync
 import com.android.systemui.settings.FakeUserTracker
 import com.android.systemui.settings.userTracker
@@ -227,6 +230,50 @@ class ShortcutHelperDialogStarterTest : SysuiTestCase() {
             }
             assertThat(starter.dialog?.isShowing).isTrue()
         }
+
+    @Test
+    fun start_onToggle_dialogConfigOnLargeScreen_showsDialogAtTheBottomCenter() =
+        runTestAndDismiss {
+            setDialogConfig(enabled = true)
+            setLargeLandscapeScreen()
+            starter.start()
+
+            runOnMainThreadAndWaitForIdleSync { testHelper.toggle(deviceId = 456) }
+
+            assertThat(starter.dialog?.isShowing).isTrue()
+            assertThat(starter.dialog?.window?.attributes?.gravity)
+                .isEqualTo(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+            val windowFlags = starter.dialog?.window?.attributes?.flags ?: 0
+            assertThat(windowFlags and WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
+                .isEqualTo(0)
+        }
+
+    @Test
+    fun start_onToggle_dialogConfigOff_showsBottomSheet() = runTestAndDismiss {
+        setDialogConfig(enabled = false)
+        setLargeLandscapeScreen()
+        starter.start()
+
+        runOnMainThreadAndWaitForIdleSync { testHelper.toggle(deviceId = 456) }
+
+        assertThat(starter.dialog?.isShowing).isTrue()
+        assertThat(starter.dialog?.window?.attributes?.gravity)
+            .isNotEqualTo(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+    }
+
+    private fun setDialogConfig(enabled: Boolean) {
+        context.orCreateTestableResources.addOverride(R.bool.config_shortcutHelperAsDialog, enabled)
+    }
+
+    private fun setLargeLandscapeScreen() {
+        val configuration =
+            Configuration(context.resources.configuration).apply {
+                screenWidthDp = 1280
+                screenHeightDp = 800
+                orientation = Configuration.ORIENTATION_LANDSCAPE
+            }
+        context.orCreateTestableResources.overrideConfiguration(configuration)
+    }
 
     /** Runs the given test block and dismisses any dialog at the end. */
     private fun runTestAndDismiss(block: suspend Kosmos.() -> Unit) =

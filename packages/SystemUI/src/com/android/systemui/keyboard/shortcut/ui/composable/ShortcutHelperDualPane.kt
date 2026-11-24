@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -47,13 +46,15 @@ fun ShortcutHelperDualPane(
     uiState: ShortcutsUiState.Active,
     modifier: Modifier = Modifier,
     onShortcutCustomizationRequested: (ShortcutCustomizationRequestInfo) -> Unit = {},
-) {
+    layout: ShortcutHelperDualPaneLayout = ShortcutHelperDualPaneLayout.BottomSheet,
+    onCloseClicked: () -> Unit = {},
+) = with(layout) {
     val selectedCategory =
         uiState.shortcutCategories.fastFirstOrNull { it.type == selectedCategoryType }
 
-    Column(modifier = modifier.fillMaxSize().padding(horizontal = 24.dp)) {
+    Column(modifier = modifier.fillMaxSize().content()) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().titleRow(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -73,12 +74,13 @@ fun ShortcutHelperDualPane(
                 },
                 shouldShowResetButton = uiState.shouldShowResetButton,
             )
+            TrailingTitleActions(onCloseClicked)
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(titleSpacerHeight))
         Row(Modifier.fillMaxWidth()) {
             StartSidePanel(
                 onSearchQueryChanged = onSearchQueryChanged,
-                modifier = Modifier.width(240.dp).semantics { isTraversalGroup = true },
+                modifier = Modifier.sidebar().semantics { isTraversalGroup = true },
                 categories = uiState.shortcutCategories,
                 onKeyboardSettingsClicked = onKeyboardSettingsClicked,
                 selectedCategory = selectedCategoryType,
@@ -89,7 +91,7 @@ fun ShortcutHelperDualPane(
                 uiState,
                 onCustomizationModeToggled,
                 selectedCategory,
-                Modifier.fillMaxSize().padding(top = 8.dp).semantics { isTraversalGroup = true },
+                Modifier.fillMaxSize().endPanel().semantics { isTraversalGroup = true },
                 onShortcutCustomizationRequested,
             )
         }

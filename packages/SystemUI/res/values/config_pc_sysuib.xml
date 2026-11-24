@@ -30,4 +30,11 @@
     <!-- Whether a mouse drag moves a tile in the quick settings edit grid at once, without the
          long press that touch needs. -->
     <bool name="config_qsEditModeImmediateMouseDrag">false</bool>
+
+    <!-- Whether the keyboard shortcut helper opens as a dialog with a categories sidebar instead
+         of a bottom sheet, on displays that are not compact. -->
+    <bool name="config_shortcutHelperAsDialog">false</bool>
+
+    <!-- Width of the categories sidebar in the keyboard shortcut helper dialog. -->
+    <dimen name="shortcut_helper_dialog_sidebar_width">280dp</dimen>
 </resources>
