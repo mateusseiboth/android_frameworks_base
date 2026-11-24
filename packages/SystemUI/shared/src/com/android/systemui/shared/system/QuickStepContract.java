@@ -145,6 +145,9 @@ public class QuickStepContract {
     // A SystemUI dialog that asks the taskbar to stash is showing. Unlike
     // SYSUI_STATE_DIALOG_SHOWING, dialogs that keep the taskbar visible do not set it.
     public static final long SYSUI_STATE_DIALOG_STASH_TASKBAR = 1L << 39;
+    // A status bar quick action popup (calendar, chip popups) is showing. Bit 40 is left for
+    // Googlebook's home screen peeking state.
+    public static final long SYSUI_STATE_QUICK_ACTIONS_SHOWING = 1L << 41;
 
     // Mask for SystemUiStateFlags to isolate SYSUI_STATE_AWAKE and
     // SYSUI_STATE_WAKEFULNESS_TRANSITION, to match WAKEFULNESS_* constants
@@ -199,6 +202,7 @@ public class QuickStepContract {
             SYSUI_STATE_BACK_DISMISS_IME,
             SYSUI_STATE_DUAL_SHADE_ENABLED,
             SYSUI_STATE_DIALOG_STASH_TASKBAR,
+            SYSUI_STATE_QUICK_ACTIONS_SHOWING,
     })
     public @interface SystemUiStateFlags {}
 
@@ -320,6 +324,9 @@ public class QuickStepContract {
         }
         if ((flags & SYSUI_STATE_DIALOG_STASH_TASKBAR) != 0) {
             str.add("dialog_stash_taskbar");
+        }
+        if ((flags & SYSUI_STATE_QUICK_ACTIONS_SHOWING) != 0) {
+            str.add("quick_actions_showing");
         }
 
         return str.toString();

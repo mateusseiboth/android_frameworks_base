@@ -33,6 +33,7 @@ import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_BOUNCER_
 import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_COMMUNAL_HUB_SHOWING
 import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_NOTIFICATION_PANEL_EXPANDED
 import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_NOTIFICATION_PANEL_VISIBLE
+import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_QUICK_ACTIONS_SHOWING
 import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_QUICK_SETTINGS_EXPANDED
 import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_STATUS_BAR_KEYGUARD_SHOWING
 import com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_STATUS_BAR_KEYGUARD_SHOWING_OCCLUDED
@@ -194,6 +195,10 @@ constructor(
                         it.scene.isOccluded() || it.sceneBehind?.isOccluded() == true
                     },
                 SYSUI_STATE_COMMUNAL_HUB_SHOWING to { it.isVisible && it.scene == Scenes.Communal },
+                SYSUI_STATE_QUICK_ACTIONS_SHOWING to
+                    {
+                        it.isVisible && Overlays.QuickActions in it.overlays
+                    },
             )
     }
 }
