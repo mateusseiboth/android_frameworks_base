@@ -42,6 +42,7 @@ import com.android.systemui.volume.Events
 import com.android.systemui.volume.dialog.dagger.scope.VolumeDialog
 import com.android.systemui.volume.dialog.dagger.scope.VolumeDialogScope
 import com.android.systemui.volume.dialog.domain.interactor.ExpandedAudioTileDetailsFeatureInteractor
+import com.android.systemui.volume.dialog.domain.interactor.VolumeDialogHorizontalButtonsInteractor
 import com.android.systemui.volume.dialog.domain.interactor.VolumeDialogVisibilityInteractor
 import com.android.systemui.volume.dialog.ringer.domain.VolumeDialogRingerInteractor
 import com.android.systemui.volume.dialog.ringer.shared.model.VolumeDialogRingerModel
@@ -80,6 +81,7 @@ constructor(
     private val uiEventLogger: UiEventLogger,
     private val systemClock: SystemClock,
     private val expandedAudioTileDetailsFeatureInteractor: ExpandedAudioTileDetailsFeatureInteractor,
+    private val horizontalButtonsInteractor: VolumeDialogHorizontalButtonsInteractor,
 ) {
 
     // Use horizontal volume dialog if the audio tile details view is enabled
@@ -107,6 +109,9 @@ constructor(
             ) { isZenMuted, ringerModel, state, orientation ->
                 level = ringerModel.level
                 levelMax = ringerModel.levelMax
+                if (horizontalButtonsInteractor.isWithoutButtons) {
+                    return@combine RingerViewModelState.Unavailable
+                }
                 ringerModel.toViewModel(state, isZenMuted, orientation)
             }
             .flowOn(backgroundDispatcher)
