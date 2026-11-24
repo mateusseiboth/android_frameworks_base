@@ -21,6 +21,7 @@ import static android.app.NotificationChannel.NEWS_ID;
 import static android.app.Flags.FLAG_ENABLE_AUTOMATION_NOTIFICATION_UI;
 
 import static com.android.systemui.Flags.FLAG_DEFAULT_HUN_EXPANSION;
+import static com.android.systemui.Flags.FLAG_NOTIFICATION_X_BUTTON_CLIP_FIX;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -1264,5 +1265,29 @@ public class ExpandableNotificationRowTest extends SysuiTestCase {
             }
         }
         return false;
+    }
+
+    @Test
+    @EnableFlags(FLAG_NOTIFICATION_X_BUTTON_CLIP_FIX)
+    public void dismissButton_notReachableByFocusByDefault() throws Exception {
+        ExpandableNotificationRow row = mKosmos.createRow();
+
+        View dismissButton = row.findViewById(com.android.systemui.res.R.id.dismiss_button);
+        assertFalse(dismissButton.isFocusable());
+        assertEquals(View.IMPORTANT_FOR_ACCESSIBILITY_NO,
+                dismissButton.getImportantForAccessibility());
+    }
+
+    @Test
+    @EnableFlags(FLAG_NOTIFICATION_X_BUTTON_CLIP_FIX)
+    public void dismissButton_reachableByFocus_whenConfigured() throws Exception {
+        overrideResource(com.android.systemui.res.R.bool.config_notificationDismissButtonAccessible,
+                true);
+        ExpandableNotificationRow row = mKosmos.createRow();
+
+        View dismissButton = row.findViewById(com.android.systemui.res.R.id.dismiss_button);
+        assertTrue(dismissButton.isFocusable());
+        assertEquals(View.IMPORTANT_FOR_ACCESSIBILITY_YES,
+                dismissButton.getImportantForAccessibility());
     }
 }

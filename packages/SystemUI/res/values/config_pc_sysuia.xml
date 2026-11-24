@@ -23,4 +23,8 @@
     <!-- Whether heads-up notifications on the desktop status bar are fully rounded and keep their
          header while they float over the screen: pinned, animating away, or pulled down. -->
     <bool name="config_desktopHeadsUpAppearance">false</bool>
+
+    <!-- Whether the dismiss button of a notification can also be reached by keyboard focus and
+         accessibility services, and shows while the focus is on the notification. -->
+    <bool name="config_notificationDismissButtonAccessible">false</bool>
 </resources>

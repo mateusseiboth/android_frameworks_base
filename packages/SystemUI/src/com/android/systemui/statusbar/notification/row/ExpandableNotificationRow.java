@@ -63,7 +63,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewParent;
+import android.view.ViewRootImpl;
 import android.view.ViewStub;
+import android.view.ViewTreeObserver;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityManager;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -280,6 +282,11 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
     private NotificationRebindingTracker mRebindingTracker;
     private FalsingManager mFalsingManager;
     private ImageView mDismissButton;
+    private boolean mIsDismissButtonHovered;
+    private boolean mIsDismissButtonReachableByFocus;
+    private final Runnable mUpdateDismissButtonRunnable = this::updateDismissButtonVisibility;
+    private final ViewTreeObserver.OnGlobalFocusChangeListener mDismissButtonFocusListener =
+            (oldFocus, newFocus) -> updateDismissButtonVisibility();
 
     /**
      * Whether or not the notification is using the heads up view and should peek from the top.
@@ -832,7 +839,8 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
         final Boolean targetVisible = getDismissButtonTargetVisibilityIfAny(event);
         if (targetVisible != null) {
             if (NotificationXButtonClipFix.isEnabled()) {
-                mDismissButton.setVisibility(targetVisible ? VISIBLE : GONE);
+                mIsDismissButtonHovered = targetVisible;
+                updateDismissButtonVisibility();
             } else {
                 for (DismissButtonTargetVisibilityListener listener :
                         mDismissButtonTargetVisibilityListeners) {
@@ -843,6 +851,58 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
 
         // Do not consume the hover event so that children still have a chance to process it.
         return false;
+    }
+
+    private void updateDismissButtonVisibility() {
+        if (mDismissButton == null) {
+            return;
+        }
+        final boolean shown = DismissButtonVisibility.isDismissButtonShown(new DismissButtonState(
+                canExpandableViewBeDismissed(),
+                mIsDismissButtonHovered,
+                mIsDismissButtonReachableByFocus,
+                hasFocus(),
+                hasAccessibilityFocusWithin()));
+        mDismissButton.setVisibility(shown ? VISIBLE : GONE);
+    }
+
+    private boolean hasAccessibilityFocusWithin() {
+        final ViewRootImpl viewRoot = getViewRootImpl();
+        View view = viewRoot == null ? null : viewRoot.getAccessibilityFocusedHost();
+        while (view != null && view != this) {
+            final ViewParent parent = view.getParent();
+            view = parent instanceof View ? (View) parent : null;
+        }
+        return view == this;
+    }
+
+    /**
+     * Makes the dismiss button reachable by keyboard focus and accessibility services, shown while
+     * the focus is on this notification, when config_notificationDismissButtonAccessible is set.
+     */
+    private void initDismissButtonFocus() {
+        if (mDismissButton == null) {
+            return;
+        }
+        mIsDismissButtonReachableByFocus = getResources().getBoolean(
+                R.bool.config_notificationDismissButtonAccessible);
+        if (!mIsDismissButtonReachableByFocus) {
+            return;
+        }
+        // The shared layout keeps the button out of focus and accessibility; open it up here.
+        mDismissButton.setFocusable(true);
+        mDismissButton.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
+    }
+
+    private void onAccessibilityFocusEvent(AccessibilityEvent event) {
+        final int type = event.getEventType();
+        if (type != AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED
+                && type != AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED) {
+            return;
+        }
+        // The window records the newly focused view after the event is sent.
+        removeCallbacks(mUpdateDismissButtonRunnable);
+        post(mUpdateDismissButtonRunnable);
     }
 
     private @Nullable Boolean getDismissButtonTargetVisibilityIfAny(MotionEvent event) {
@@ -2417,6 +2477,8 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
             }
         }
 
+        initDismissButtonFocus();
+
         // The background cutout should not show when NotificationXButtonClipFix is enabled.
         if (NotificationAddXOnHoverToDismiss.isEnabled()
                 && !NotificationXButtonClipFix.isEnabled()) {
@@ -2782,7 +2844,18 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
     }
 
     @Override
+    public void sendAccessibilityEventUnchecked(AccessibilityEvent event) {
+        super.sendAccessibilityEventUnchecked(event);
+        if (mIsDismissButtonReachableByFocus) {
+            onAccessibilityFocusEvent(event);
+        }
+    }
+
+    @Override
     public boolean onRequestSendAccessibilityEventInternal(View child, AccessibilityEvent event) {
+        if (mIsDismissButtonReachableByFocus) {
+            onAccessibilityFocusEvent(event);
+        }
         if (super.onRequestSendAccessibilityEventInternal(child, event)) {
             try {
                 // Add a record for the entire layout since its content is somehow small.
@@ -4616,6 +4689,16 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         updateBaseRoundness();
+        if (mIsDismissButtonReachableByFocus) {
+            getViewTreeObserver().addOnGlobalFocusChangeListener(mDismissButtonFocusListener);
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        getViewTreeObserver().removeOnGlobalFocusChangeListener(mDismissButtonFocusListener);
+        removeCallbacks(mUpdateDismissButtonRunnable);
     }
 
     /** Set whether this notification may show a snooze action. */
