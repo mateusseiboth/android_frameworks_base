@@ -74,6 +74,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -470,6 +471,9 @@ public class ScreenMediaRecorder {
         values.put(MediaStore.Video.Media.MIME_TYPE, "video/mp4");
         values.put(MediaStore.Video.Media.DATE_ADDED, System.currentTimeMillis());
         values.put(MediaStore.Video.Media.DATE_TAKEN, System.currentTimeMillis());
+        Optional.ofNullable(ScreenRecordingFolder.relativePathOf(mContext.getResources().getString(
+                com.android.systemui.res.R.string.config_screenRecordingFolder)))
+                .ifPresent(folder -> values.put(MediaStore.MediaColumns.RELATIVE_PATH, folder));
 
         ContentResolver resolver = mContext.getContentResolver();
         Uri collectionUri = MediaStore.Video.Media.getContentUri(
