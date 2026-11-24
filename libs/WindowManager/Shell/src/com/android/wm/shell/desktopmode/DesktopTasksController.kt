@@ -397,6 +397,12 @@ class DesktopTasksController(
     private val deskDeactivationFromOverviewScheduler =
         DeskDeactivationFromOverviewScheduler(shellController, this, displayController)
 
+    private val deskWindowOrderSync =
+        DeskWindowOrderSync(
+            isEnabled = context.resources.getBoolean(R.bool.config_preserveDesktopZOrderOnExit),
+            desksOrganizer = desksOrganizer,
+        )
+
     init {
         if (desktopState.canEnterDesktopMode) {
             shellInit.addInitCallback({ onInit() }, this)
@@ -5465,6 +5471,8 @@ class DesktopTasksController(
         )
         desksOrganizer.activateDesk(wct, deskId)
         desktopScrimController.updateDesktopScrimIfNeeded(displayId, userId, targetDeskId = deskId)
+        // Bring the windows back in the stacking order the desk was left with.
+        deskWindowOrderSync.applyWindowOrder(repository, deskId, displayId)
         val expandedTasksOrderedFrontToBack =
             repository.getExpandedTasksIdsInDeskOrdered(deskId = deskId)
         // If we're adding a new Task we might need to minimize an old one

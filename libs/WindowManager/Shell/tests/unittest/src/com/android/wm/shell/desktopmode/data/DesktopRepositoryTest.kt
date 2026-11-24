@@ -294,6 +294,27 @@ class DesktopRepositoryTest : ShellTestCase() {
     }
 
     @Test
+    fun applyWindowOrderToDesk_reordersRunningTasks_keepsOtherSlots() {
+        repo.addDesk(DEFAULT_DISPLAY, deskId = 2)
+        listOf(5, 6, 7).forEach { taskId ->
+            repo.addTaskToDesk(
+                displayId = DEFAULT_DISPLAY,
+                deskId = 2,
+                taskId = taskId,
+                isVisible = true,
+                taskBounds = TEST_TASK_BOUNDS,
+            )
+        }
+
+        // Stored top first: 7, 6, 5. Only 7 and 5 are running, with 5 on top.
+        repo.applyWindowOrderToDesk(deskId = 2, liveTopFirst = listOf(5, 7))
+
+        assertThat(repo.getFreeformTasksIdsInDeskInZOrder(deskId = 2))
+            .containsExactly(5, 6, 7)
+            .inOrder()
+    }
+
+    @Test
     fun addTaskToDesk_visible_addsToVisible() {
         repo.addDesk(DEFAULT_DISPLAY, deskId = 2)
 

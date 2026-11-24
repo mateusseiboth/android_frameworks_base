@@ -36,6 +36,7 @@ import com.android.internal.annotations.VisibleForTesting
 import com.android.internal.protolog.ProtoLog
 import com.android.window.flags.Flags
 import com.android.wm.shell.common.WorkSerializer
+import com.android.wm.shell.desktopmode.DeskZOrder
 import com.android.wm.shell.desktopmode.DisplayDeskState
 import com.android.wm.shell.desktopmode.data.persistence.DesktopPersistentRepository
 import com.android.wm.shell.protolog.ShellProtoLogGroup.WM_SHELL_DESKTOP_MODE
@@ -800,6 +801,27 @@ class DesktopRepository(
     @VisibleForTesting
     fun getFreeformTasksIdsInDeskInZOrder(deskId: Int): ArrayList<Int> =
         ArrayList(desktopData.getDesk(deskId)?.freeformTasksInZOrder ?: emptyList())
+
+    /**
+     * Puts the running tasks of [deskId] in the stacking order the window manager reports for them
+     * ([liveTopFirst], top first); tasks that are not running keep their slot.
+     */
+    fun applyWindowOrderToDesk(deskId: Int, liveTopFirst: List<Int>) {
+        val desk = desktopData.getDesk(deskId) ?: return
+        val merged = DeskZOrder.mergeWindowOrder(desk.freeformTasksInZOrder, liveTopFirst)
+        if (merged == desk.freeformTasksInZOrder) return
+        logD(
+            "applyWindowOrderToDesk deskId=%d from %s to %s",
+            deskId,
+            desk.freeformTasksInZOrder.toDumpString(),
+            merged.toDumpString(),
+        )
+        desk.freeformTasksInZOrder.clear()
+        desk.freeformTasksInZOrder.addAll(merged)
+        if (!desk.transientDesk && DesktopModeFlags.ENABLE_DESKTOP_WINDOWING_PERSISTENCE.isTrue) {
+            updatePersistentRepository(desk.displayId)
+        }
+    }
 
     /** Returns the tasks inside the given desk. */
     fun getActiveTaskIdsInDesk(deskId: Int): Set<Int> =

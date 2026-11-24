@@ -27,4 +27,8 @@
     <!-- Whether Home takes the input focus while the home screen is peeked, so keyboard input
          reaches the launcher; the top desktop window takes it back when the peek ends. -->
     <bool name="config_focusHomeWhilePeeking">false</bool>
+
+    <!-- Whether the desktop windows come back in the stacking order they had when the desktop
+         was left (Home, Overview, a fullscreen app) once it is entered again. -->
+    <bool name="config_preserveDesktopZOrderOnExit">false</bool>
 </resources>
