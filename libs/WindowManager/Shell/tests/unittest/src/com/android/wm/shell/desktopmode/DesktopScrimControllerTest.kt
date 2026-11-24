@@ -21,9 +21,11 @@ import android.platform.test.annotations.EnableFlags
 import android.testing.AndroidTestingRunner
 import android.view.Display.DEFAULT_DISPLAY
 import androidx.test.filters.SmallTest
+import com.android.wm.shell.R
 import com.android.wm.shell.RootTaskDisplayAreaOrganizer
 import com.android.wm.shell.ShellTestCase
 import com.android.wm.shell.TestShellExecutor
+import com.android.wm.shell.common.DisplayController
 import com.android.wm.shell.desktopmode.DesktopModeEventLogger.Companion.ExitReason
 import com.android.wm.shell.shared.desktopmode.DesktopScrimListener
 import com.android.wm.shell.sysui.ShellController
@@ -52,6 +54,7 @@ class DesktopScrimControllerTest : ShellTestCase() {
     private val shellController = mock<ShellController>()
     private val rootTaskDisplayAreaOrganizer = mock<RootTaskDisplayAreaOrganizer>()
     private val keyguardManager = mock<KeyguardManager>()
+    private val displayController = mock<DisplayController>()
     private val displayIds = intArrayOf(DEFAULT_DISPLAY)
 
     private val shellExecutor = TestShellExecutor()
@@ -69,6 +72,8 @@ class DesktopScrimControllerTest : ShellTestCase() {
                 rootTaskDisplayAreaOrganizer,
                 keyguardManager,
                 shellExecutor,
+                mContext,
+                displayController,
             )
     }
 
@@ -178,5 +183,71 @@ class DesktopScrimControllerTest : ShellTestCase() {
         // The effect should be gone
         verify(desktopScrimListener).onDesktopScrimEffectChanged(DEFAULT_DISPLAY, false)
     }
+
+    @Test
+    fun stableInsetsListener_registeredWhenEnabled() {
+        mContext.orCreateTestableResources.addOverride(
+            R.bool.config_desktopScrimFollowsStableInsets,
+            true,
+        )
+
+        controller.onInit()
+
+        verify(displayController).addDisplayWindowListener(controller)
+    }
+
+    @Test
+    fun stableInsetsListener_notRegisteredWhenDisabled() {
+        mContext.orCreateTestableResources.addOverride(
+            R.bool.config_desktopScrimFollowsStableInsets,
+            false,
+        )
+
+        controller.onInit()
+
+        verify(displayController, never()).addDisplayWindowListener(any())
+    }
+
+    @Test
+    @EnableFlags(com.android.systemui.Flags.FLAG_OPAQUE_STATUS_BAR)
+    fun onStableInsetsChanging_recomputesScrim() {
+        controller.addDesktopScrimListener(desktopScrimListener, shellExecutor)
+        whenever(
+                desktopTasksController.isAnyTaskMaximizedOrDoubleTiled(
+                    DEFAULT_DISPLAY,
+                    DEFAULT_USER_ID,
+                    null,
+                    null,
+                    null,
+                )
+            )
+            .thenReturn(true)
+        whenever(
+                desktopTasksController.isAnyTaskMaximizedOrSnapped(
+                    DEFAULT_DISPLAY,
+                    DEFAULT_USER_ID,
+                    null,
+                )
+            )
+            .thenReturn(true)
+
+        controller.onStableInsetsChanging(DEFAULT_DISPLAY, null)
+        shellExecutor.flushAll()
+
+        verify(desktopScrimListener).onDesktopScrimEffectChanged(DEFAULT_DISPLAY, true)
+    }
+
+    @Test
+    @EnableFlags(com.android.systemui.Flags.FLAG_OPAQUE_STATUS_BAR)
+    fun onStableInsetsChanging_keepsScrimOffWhileOverviewIsVisible() {
+        controller.addDesktopScrimListener(desktopScrimListener, shellExecutor)
+        whenever(shellController.isOverviewVisible(DEFAULT_DISPLAY)).thenReturn(true)
+
+        controller.onStableInsetsChanging(DEFAULT_DISPLAY, null)
+        shellExecutor.flushAll()
+
+        verify(desktopScrimListener, never()).onDesktopScrimEffectChanged(any(), any())
+    }
+
     // TODO(b/489916353): Add tests to cover all other methods in DesktopScrimController
 }

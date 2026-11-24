@@ -318,6 +318,8 @@ class DesktopTasksController(
             rootTaskDisplayAreaOrganizer,
             keyguardManager,
             mainExecutor,
+            context,
+            displayController,
         )
 
     private val mOnAnimationFinishedCallback = { releaseVisualIndicator() }

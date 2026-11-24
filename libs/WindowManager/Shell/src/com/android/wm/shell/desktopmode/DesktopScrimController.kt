@@ -25,7 +25,10 @@ import android.os.SystemProperties
 import android.util.ArrayMap
 import com.android.internal.annotations.VisibleForTesting
 import com.android.window.flags.Flags
+import com.android.wm.shell.R
 import com.android.wm.shell.RootTaskDisplayAreaOrganizer
+import com.android.wm.shell.common.DisplayController
+import com.android.wm.shell.common.DisplayLayout
 import com.android.wm.shell.common.ShellExecutor
 import com.android.wm.shell.desktopmode.DesktopModeEventLogger.Companion.ExitReason
 import com.android.wm.shell.desktopmode.DesktopTasksController.SnapPosition
@@ -43,7 +46,12 @@ class DesktopScrimController(
     private val rootTaskDisplayAreaOrganizer: RootTaskDisplayAreaOrganizer,
     private val keyguardManager: KeyguardManager,
     @ShellMainThread private val mainExecutor: ShellExecutor,
-) : KeyguardManager.KeyguardLockedStateListener, OverviewVisibilityChangeListener {
+    private val context: Context,
+    private val displayController: DisplayController,
+) :
+    KeyguardManager.KeyguardLockedStateListener,
+    OverviewVisibilityChangeListener,
+    DisplayController.OnDisplaysChangedListener {
     private val mDesktopScrimListeners = ArrayMap<DesktopScrimListener, Executor>()
 
     private val wallpaperService: IWallpaperManager =
@@ -61,6 +69,9 @@ class DesktopScrimController(
         }
         if (Flags.handleOverviewDesktopScrimBugfix()) {
             shellController.addOverviewVisibilityChangeListener(this)
+        }
+        if (context.resources.getBoolean(R.bool.config_desktopScrimFollowsStableInsets)) {
+            displayController.addDisplayWindowListener(this)
         }
     }
 
@@ -151,6 +162,24 @@ class DesktopScrimController(
                 updateDesktopScrimIfNeeded(displayId, shellController.currentUserId)
             }
         }
+    }
+
+    /**
+     * The stable bounds decide whether a window counts as maximized, so a taskbar or status bar
+     * that changes size can turn the scrim on or off.
+     */
+    override fun onStableInsetsChanging(displayId: Int, oldLayout: DisplayLayout?) {
+        updateDesktopScrimWhenUnobstructed(displayId)
+    }
+
+    /**
+     * Computes the scrim of [displayId] again, unless the keyguard or Overview is showing: both
+     * keep the scrim off until they are gone.
+     */
+    private fun updateDesktopScrimWhenUnobstructed(displayId: Int) {
+        if (keyguardManager.isKeyguardLocked) return
+        if (shellController.isOverviewVisible(displayId)) return
+        updateDesktopScrimIfNeeded(displayId, shellController.currentUserId)
     }
 
     override fun onOverviewHidden(displayId: Int) {
