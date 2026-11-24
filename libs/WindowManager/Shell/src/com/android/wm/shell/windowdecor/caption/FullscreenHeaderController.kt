@@ -233,6 +233,7 @@ class FullscreenHeaderController(
             )
 
             updateViewHolder(params.hasGlobalFocus)
+            reloadAppInfoIfStale()
 
             if (!params.hasGlobalFocus) {
                 closeHandleMenu()
@@ -596,6 +597,13 @@ class FullscreenHeaderController(
                 focusTransitionObserver = focusTransitionObserver,
             )
 
+        loadAppInfo()
+        viewHolder = fullscreenHeaderViewHolder
+        return fullscreenHeaderViewHolder
+    }
+
+    private fun loadAppInfo() {
+        loadAppInfoJob?.cancel()
         loadAppInfoJob =
             mainScope.launch {
                 val (name, icon) = taskResourceLoader.getNameAndHeaderIcon(taskInfo)
@@ -603,8 +611,12 @@ class FullscreenHeaderController(
                 viewHolder.setAppIcon(icon)
                 notifyCaptionStateChanged()
             }
-        viewHolder = fullscreenHeaderViewHolder
-        return fullscreenHeaderViewHolder
+    }
+
+    /** Shows the new name and icon of an app that changed its task description. */
+    private fun reloadAppInfoIfStale() {
+        if (!taskResourceLoader.isNameAndHeaderIconStale(taskInfo)) return
+        loadAppInfo()
     }
 
     override fun getCaptionHeight(): Int = dimensions.height + getCaptionTopPadding()

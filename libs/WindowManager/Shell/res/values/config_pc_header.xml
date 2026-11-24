@@ -32,4 +32,12 @@
          browser tab strip) keeps it under the fullscreen header of a desktop-first display: the
          header turns transparent and gives the app the caption insets, as in a desktop window. -->
     <bool name="config_keepCustomHeaderInFullscreen">false</bool>
+
+    <!-- Whether window headers show the label and icon an app sets on its task description, and
+         update them when the app changes it, instead of its launch activity's label and icon. -->
+    <bool name="config_windowHeaderFollowsTaskDescription">false</bool>
+
+    <!-- Apps whose window headers follow their task description when
+         config_windowHeaderFollowsTaskDescription is true. Empty means every app. -->
+    <string-array name="config_windowHeaderTaskDescriptionPackages" translatable="false" />
 </resources>

@@ -17,11 +17,15 @@ package com.android.wm.shell.windowdecor.common
 
 import android.annotation.DimenRes
 import android.app.ActivityManager.RunningTaskInfo
+import android.app.ActivityManager.TaskDescription
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.pm.PackageManager.NameNotFoundException
 import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.Icon
 import android.os.Handler
 import android.os.LocaleList
 import android.os.UserHandle
@@ -60,6 +64,8 @@ class WindowDecorTaskResourceLoaderImpl(
     private val iconProvider: IconProvider,
     private val headerIconFactory: BaseIconFactory,
     private val veilIconFactory: BaseIconFactory,
+    private val taskDescriptionRule: TaskDescriptionHeaderRule =
+        TaskDescriptionHeaderRule(isEnabled = false, packageAllowlist = emptySet()),
 ) : WindowDecorTaskResourceLoader {
     constructor(
         context: Context,
@@ -83,6 +89,7 @@ class WindowDecorTaskResourceLoaderImpl(
         IconProvider(context),
         headerIconFactory = context.createIconFactory(R.dimen.desktop_mode_caption_icon_radius),
         veilIconFactory = context.createIconFactory(R.dimen.desktop_mode_resize_veil_icon_size),
+        taskDescriptionRule = context.createTaskDescriptionHeaderRule(),
     )
 
     /**
@@ -104,6 +111,12 @@ class WindowDecorTaskResourceLoaderImpl(
      * in |taskToResourceCache|.
      */
     @VisibleForTesting val localeListOnCache = HashMap<Int, LocaleList>()
+
+    /**
+     * A map of task -> task description followed by the load in flight for it, so that a header
+     * asks for one reload per change of the description, not one per relayout while it loads.
+     */
+    private val loadingDescriptions = HashMap<Int, TaskDescription?>()
 
     init {
         shellInit.addInitCallback(this::onInit, this)
@@ -142,14 +155,20 @@ class WindowDecorTaskResourceLoaderImpl(
         val localeListActiveOnCacheTime = localeListOnCache[taskInfo.taskId]
         if (
             cachedResources != null &&
-                taskInfo.getConfiguration().getLocales().equals(localeListActiveOnCacheTime)
+                taskInfo.getConfiguration().getLocales().equals(localeListActiveOnCacheTime) &&
+                isSameHeaderDescription(
+                    cachedResources.taskDescription,
+                    followedDescription(taskInfo),
+                )
         ) {
             callback(cachedResources.appName, cachedResources.appIcon)
             return
         }
 
+        loadingDescriptions[taskInfo.taskId] = followedDescription(taskInfo)
         mainScope.launch {
             val resources = loadAppResources(taskInfo)
+            loadingDescriptions.remove(taskInfo.taskId)
             if (resources.shouldCacheResult) {
                 taskToResourceCache[taskInfo.taskId] = resources
             }
@@ -158,11 +177,26 @@ class WindowDecorTaskResourceLoaderImpl(
         }
     }
 
+    override fun isNameAndHeaderIconStale(taskInfo: RunningTaskInfo): Boolean {
+        val current = followedDescription(taskInfo)
+        if (loadingDescriptions.containsKey(taskInfo.taskId)) {
+            return !isSameHeaderDescription(loadingDescriptions[taskInfo.taskId], current)
+        }
+        val cachedResources = taskToResourceCache[taskInfo.taskId] ?: return false
+        return !isSameHeaderDescription(cachedResources.taskDescription, current)
+    }
+
     override suspend fun getVeilIcon(taskInfo: RunningTaskInfo): Bitmap =
         withContext(mainImmediateDispatcher) {
             checkWindowDecorExists(taskInfo)
             val cachedResources = taskToResourceCache[taskInfo.taskId]
-            if (cachedResources != null) {
+            if (
+                cachedResources != null &&
+                    isSameHeaderDescription(
+                        cachedResources.taskDescription,
+                        followedDescription(taskInfo),
+                    )
+            ) {
                 return@withContext cachedResources.veilIcon
             }
             val resources = loadAppResources(taskInfo)
@@ -183,6 +217,7 @@ class WindowDecorTaskResourceLoaderImpl(
         existingTasks.remove(taskInfo.taskId)
         taskToResourceCache.remove(taskInfo.taskId)
         localeListOnCache.remove(taskInfo.taskId)
+        loadingDescriptions.remove(taskInfo.taskId)
     }
 
     private fun checkWindowDecorExists(taskInfo: RunningTaskInfo) {
@@ -195,10 +230,18 @@ class WindowDecorTaskResourceLoaderImpl(
         withContext(bgDispatcher) {
             Trace.beginSection("$TAG#loadAppResources")
             try {
-                val pm = userProfilesContexts.getOrCreate(taskInfo.userId).packageManager
+                val userContext = userProfilesContexts.getOrCreate(taskInfo.userId)
+                val pm = userContext.packageManager
                 val activityInfo = getActivityInfo(taskInfo, pm)
-                val appName = loadAppName(activityInfo, pm)
-                val appIconDrawable = iconProvider.getIcon(activityInfo)
+                val taskDescription = followedDescription(taskInfo)
+                val appName =
+                    taskDescriptionRule.pickLabel(
+                        taskDescription?.label,
+                        fallback = loadAppName(activityInfo, pm),
+                    )
+                val appIconDrawable =
+                    taskDescription?.let { loadTaskDescriptionIcon(it, taskInfo, userContext) }
+                        ?: iconProvider.getIcon(activityInfo)
                 val badgedAppIconDrawable =
                     pm.getUserBadgedIcon(appIconDrawable, taskInfo.userHandle())
                 val appIcon =
@@ -209,6 +252,7 @@ class WindowDecorTaskResourceLoaderImpl(
                     appIcon = appIcon,
                     veilIcon = veilIcon,
                     shouldCacheResult = true,
+                    taskDescription = taskDescription,
                 )
             } catch (e: NameNotFoundException) {
                 Slog.e(TAG, "Failed to get app resources")
@@ -237,6 +281,53 @@ class WindowDecorTaskResourceLoaderImpl(
         activityInfo.takeIf { it.labelRes != 0 || it.nonLocalizedLabel != null }?.loadLabel(pm)
             ?: pm.getApplicationLabel(activityInfo.applicationInfo)
 
+    /** The task description the header shows, or null when the header ignores it. */
+    private fun followedDescription(taskInfo: RunningTaskInfo): TaskDescription? {
+        val isFollowing =
+            taskDescriptionRule.isFollowing(
+                basePackage = taskInfo.baseIntent.component?.packageName,
+                topPackage =
+                    taskInfo.topActivity?.packageName ?: taskInfo.topActivityInfo?.packageName,
+            )
+        return taskInfo.taskDescription.takeIf { isFollowing }
+    }
+
+    /** The icon the app set on its task description, or null when it set none it can load. */
+    private fun loadTaskDescriptionIcon(
+        taskDescription: TaskDescription,
+        taskInfo: RunningTaskInfo,
+        userContext: Context,
+    ): Drawable? =
+        runCatching {
+                taskDescription.rawIcon?.loadDrawable(userContext)
+                    ?: TaskDescription.loadTaskDescriptionIcon(
+                            taskDescription.iconFilename,
+                            taskInfo.userId,
+                        )
+                        ?.let { BitmapDrawable(userContext.resources, it) }
+            }
+            .onFailure { Slog.w(TAG, "Failed to load the task description icon", it) }
+            .getOrNull()
+
+    /** Whether two task descriptions give the header the same label and icon. */
+    private fun isSameHeaderDescription(a: TaskDescription?, b: TaskDescription?): Boolean {
+        if (a == null || b == null) return a === b
+        return a.label == b.label &&
+            a.iconFilename == b.iconFilename &&
+            isSameIcon(a.rawIcon, b.rawIcon)
+    }
+
+    /** Icons that crossed binder are new objects: bitmaps compare by their pixels. */
+    private fun isSameIcon(a: Icon?, b: Icon?): Boolean {
+        if (a == null || b == null) return a === b
+        if (a.type != b.type) return false
+        return when (a.type) {
+            Icon.TYPE_BITMAP,
+            Icon.TYPE_ADAPTIVE_BITMAP -> a.bitmap.sameAs(b.bitmap)
+            else -> a.sameAs(b)
+        }
+    }
+
     private fun getActivityInfo(taskInfo: RunningTaskInfo, pm: PackageManager): ActivityInfo {
         return pm.getActivityInfo(taskInfo.component(), /* flags= */ 0)
     }
@@ -254,6 +345,8 @@ class WindowDecorTaskResourceLoaderImpl(
         val appIcon: Bitmap,
         val veilIcon: Bitmap,
         val shouldCacheResult: Boolean,
+        /** The task description the name and icon came from, null when the header ignores it. */
+        val taskDescription: TaskDescription? = null,
     )
 
     private fun dump(pw: PrintWriter, prefix: String) {
@@ -267,6 +360,17 @@ class WindowDecorTaskResourceLoaderImpl(
         private const val TAG = "AppResourceProvider"
     }
 }
+
+/**
+ * Creates the rule for headers following task descriptions from
+ * `config_windowHeaderFollowsTaskDescription` and `config_windowHeaderTaskDescriptionPackages`.
+ */
+fun Context.createTaskDescriptionHeaderRule(): TaskDescriptionHeaderRule =
+    TaskDescriptionHeaderRule(
+        isEnabled = resources.getBoolean(R.bool.config_windowHeaderFollowsTaskDescription),
+        packageAllowlist =
+            resources.getStringArray(R.array.config_windowHeaderTaskDescriptionPackages).toSet(),
+    )
 
 /** Creates an icon factory with the provided [dimensions]. */
 fun Context.createIconFactory(@DimenRes dimensions: Int): BaseIconFactory {

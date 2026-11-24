@@ -242,6 +242,7 @@ class AppHeaderController(
             updateLayoutMenu(startT)
 
             updateViewHolder(params.hasGlobalFocus)
+            reloadAppInfoIfStale()
 
             notifyCaptionStateChanged()
             return captionLayout
@@ -634,6 +635,13 @@ class AppHeaderController(
                 decorThemeUtilFactory = decorThemeUtilFactory,
             )
 
+        loadAppInfo()
+        viewHolder = appHeaderViewHolder
+        return appHeaderViewHolder
+    }
+
+    private fun loadAppInfo() {
+        loadAppInfoJob?.cancel()
         loadAppInfoJob =
             mainScope.launch {
                 val (name, icon) = taskResourceLoader.getNameAndHeaderIcon(taskInfo)
@@ -641,8 +649,12 @@ class AppHeaderController(
                 viewHolder.setAppIcon(icon)
                 notifyCaptionStateChanged()
             }
-        viewHolder = appHeaderViewHolder
-        return appHeaderViewHolder
+    }
+
+    /** Shows the new name and icon of an app that changed its task description. */
+    private fun reloadAppInfoIfStale() {
+        if (!taskResourceLoader.isNameAndHeaderIconStale(taskInfo)) return
+        loadAppInfo()
     }
 
     /** Returns the valid drag area for a task based on elements in the app chip. */
