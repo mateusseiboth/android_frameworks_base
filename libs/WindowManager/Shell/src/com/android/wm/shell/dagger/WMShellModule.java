@@ -1653,6 +1653,7 @@ public abstract class WMShellModule {
     @WMSingleton
     @Provides
     static Optional<DesktopTasksTransitionObserver> provideDesktopTasksTransitionObserver(
+            Context context,
             Optional<DesktopUserRepositories> desktopUserRepositories,
             Transitions transitions,
             ShellTaskOrganizer shellTaskOrganizer,
@@ -1674,7 +1675,10 @@ public abstract class WMShellModule {
                                         displayController,
                                         pinnedLayerController.orElse(null),
                                         desktopState,
-                                        shellInit)));
+                                        shellInit,
+                                        context.getResources().getBoolean(
+                                                R.bool.config_excludeTiledBoundsFromRememberedBounds
+                                        ))));
     }
     @WMSingleton
     @Provides

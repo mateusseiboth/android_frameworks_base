@@ -35,6 +35,7 @@ import com.android.internal.protolog.ProtoLog
 import com.android.window.flags.Flags
 import com.android.wm.shell.ShellTaskOrganizer
 import com.android.wm.shell.common.DisplayController
+import com.android.wm.shell.desktopmode.data.DesktopRepository
 import com.android.wm.shell.desktopmode.desktopwallpaperactivity.DesktopWallpaperActivityTokenProvider
 import com.android.wm.shell.pinnedlayer.phone.PinnedLayerController
 import com.android.wm.shell.pinnedlayer.phone.isNotPinned
@@ -60,6 +61,8 @@ class DesktopTasksTransitionObserver(
     private val pinnedLayerController: PinnedLayerController?,
     desktopState: DesktopState,
     shellInit: ShellInit,
+    /** See config_excludeTiledBoundsFromRememberedBounds. */
+    excludeTiledFromRememberedBounds: Boolean = false,
 ) : Transitions.TransitionObserver {
 
     data class CloseWallpaperTransition(val transition: IBinder, val displayId: Int)
@@ -68,6 +71,8 @@ class DesktopTasksTransitionObserver(
     private var closingTransitionToTransitionInfo = HashMap<IBinder, TransitionInfo>()
     private var currentProfileId: Int
     private val pendingUserBoundsChangeTransitions = mutableSetOf<IBinder>()
+    private val rememberedBoundsTilingFilter =
+        RememberedBoundsTilingFilter(excludeTiledFromRememberedBounds)
 
     init {
         if (desktopState.canEnterDesktopMode) {
@@ -334,6 +339,13 @@ class DesktopTasksTransitionObserver(
                         // state.
                         return@forEachLoop
                     }
+                    if (!isRememberedBoundsAllowed(desktopRepository, taskInfo.taskId)) {
+                        logV(
+                            "Remembered bounds is NOT updated as task#%d is tiled",
+                            taskInfo.taskId,
+                        )
+                        return@forEachLoop
+                    }
 
                     val displayLayout =
                         displayController.getDisplayLayout(taskInfo.displayId) ?: return@forEachLoop
@@ -364,6 +376,15 @@ class DesktopTasksTransitionObserver(
                 }
             }
         }
+    }
+
+    private fun isRememberedBoundsAllowed(repository: DesktopRepository, taskId: Int): Boolean {
+        val deskId = repository.getDeskIdForTask(taskId) ?: return true
+        return rememberedBoundsTilingFilter.shouldRemember(
+            taskId,
+            leftTiledTaskId = repository.getLeftTiledTask(deskId),
+            rightTiledTaskId = repository.getRightTiledTask(deskId),
+        )
     }
 
     fun addPendingUserBoundsChangeTransition(transition: IBinder) {

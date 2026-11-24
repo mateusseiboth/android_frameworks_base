@@ -19,4 +19,8 @@
     <!-- Whether a desktop window that back navigation closes stays in its desk as a minimized
          window (restored from the taskbar by relaunching it) instead of leaving the desk. -->
     <bool name="config_minimizeDesktopWindowOnBackClose">false</bool>
+
+    <!-- Whether the bounds of a window snapped to half of the screen are left out of the
+         remembered launch bounds of its app, so a relaunch opens it at its last free size. -->
+    <bool name="config_excludeTiledBoundsFromRememberedBounds">false</bool>
 </resources>

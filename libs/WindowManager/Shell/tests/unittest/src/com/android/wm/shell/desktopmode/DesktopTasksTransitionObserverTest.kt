@@ -571,6 +571,71 @@ class DesktopTasksTransitionObserverTest : ShellTestCase() {
 
     @Test
     @EnableFlags(Flags.FLAG_ENABLE_REMEMBERED_BOUNDS)
+    fun onTransitionReady_changeTransition_tiledTask_excludeTiled_doesNotUpdateRememberedBounds() {
+        transitionObserver = createObserver(excludeTiledFromRememberedBounds = true)
+        val tiledTask = setUpTiledTaskBoundsChange(deskId = 0)
+        val mockTransition = Mockito.mock(IBinder::class.java)
+
+        transitionObserver.addPendingUserBoundsChangeTransition(mockTransition)
+        transitionObserver.onTransitionReady(
+            transition = mockTransition,
+            info = createChangeTransition(tiledTask, Rect(0, 0, 100, 100), Rect(0, 0, 100, 200)),
+            startTransaction = mock(),
+            finishTransaction = mock(),
+        )
+
+        verify(taskRepository, never()).setRememberedBoundsRatio(any(), any())
+    }
+
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_REMEMBERED_BOUNDS)
+    fun onTransitionReady_changeTransition_tiledTask_configOff_updatesRememberedBounds() {
+        val tiledTask = setUpTiledTaskBoundsChange(deskId = 0)
+        val mockTransition = Mockito.mock(IBinder::class.java)
+
+        transitionObserver.addPendingUserBoundsChangeTransition(mockTransition)
+        transitionObserver.onTransitionReady(
+            transition = mockTransition,
+            info = createChangeTransition(tiledTask, Rect(0, 0, 100, 100), Rect(0, 0, 100, 200)),
+            startTransaction = mock(),
+            finishTransaction = mock(),
+        )
+
+        verify(taskRepository).setRememberedBoundsRatio(any(), any())
+    }
+
+    private fun setUpTiledTaskBoundsChange(deskId: Int): RunningTaskInfo {
+        val task =
+            createTaskInfo(1, WINDOWING_MODE_FREEFORM).apply {
+                baseActivity = ComponentName("package", "component.name")
+                configuration.windowConfiguration.bounds.set(Rect(0, 0, 100, 200))
+            }
+        val displayLayout = mock<DisplayLayout>()
+        whenever(displayLayout.getStableBoundsForDesktopMode(any())).thenAnswer {
+            (it.arguments[0] as Rect).set(Rect(0, 0, 200, 200))
+        }
+        whenever(displayController.getDisplayLayout(task.displayId)).thenReturn(displayLayout)
+        whenever(taskRepository.getDeskIdForTask(task.taskId)).thenReturn(deskId)
+        whenever(taskRepository.getLeftTiledTask(deskId)).thenReturn(task.taskId)
+        return task
+    }
+
+    private fun createObserver(excludeTiledFromRememberedBounds: Boolean) =
+        DesktopTasksTransitionObserver(
+            userRepositories,
+            transitions,
+            shellTaskOrganizer,
+            mixedHandler,
+            desktopWallpaperActivityTokenProvider,
+            displayController,
+            pinnedLayerController,
+            desktopState,
+            shellInit,
+            excludeTiledFromRememberedBounds,
+        )
+
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_REMEMBERED_BOUNDS)
     fun onTransitionReady_changeTransition_doesNotUpdateRememberedBounds_inImmersive() {
         val startBounds = Rect(0, 0, 100, 100)
         val endBounds = Rect(10, 20, 120, 130)
