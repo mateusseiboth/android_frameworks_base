@@ -41,6 +41,8 @@ sealed class QuickActionChipId(val value: String) {
     data object ImeIndicator : QuickActionChipId("ImeIndicator")
 
     data object ScreenRecording : QuickActionChipId("ScreenRecording")
+
+    data object Calendar : QuickActionChipId("Calendar")
 }
 
 /**

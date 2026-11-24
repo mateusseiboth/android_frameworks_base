@@ -16,6 +16,7 @@
 
 package com.android.systemui.statusbar.pipeline.shared.ui.composable
 
+import android.graphics.RectF
 import android.view.ContextThemeWrapper
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -43,6 +44,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -125,7 +128,14 @@ fun DesktopStatusBar(
                         Alignment.Start,
                     ),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable(onClick = viewModel::onClockClicked),
+                modifier =
+                    Modifier.onGloballyPositioned { coordinates ->
+                            val bounds = coordinates.boundsInWindow()
+                            viewModel.onClockBoundsChanged(
+                                RectF(bounds.left, bounds.top, bounds.right, bounds.bottom)
+                            )
+                        }
+                        .clickable(onClick = viewModel::onClockClicked),
             ) {
                 val clockViewModel =
                     rememberViewModel("HomeStatusBar.Clock") {

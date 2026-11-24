@@ -16,6 +16,8 @@
 
 package com.android.systemui.statusbar.quickactions.data
 
+import com.android.systemui.statusbar.quickactions.calendar.data.repository.CalendarEventsRepository
+import com.android.systemui.statusbar.quickactions.calendar.data.repository.CalendarEventsRepositoryImpl
 import com.android.systemui.statusbar.quickactions.data.repository.QuickActionChipsRepository
 import com.android.systemui.statusbar.quickactions.data.repository.impl.QuickActionChipsRepositoryImpl
 import dagger.Binds
@@ -27,4 +29,9 @@ interface QuickActionsDataModule {
     public fun bindQuickActionChipsRepository(
         impl: QuickActionChipsRepositoryImpl
     ): QuickActionChipsRepository
+
+    @Binds
+    public fun bindCalendarEventsRepository(
+        impl: CalendarEventsRepositoryImpl
+    ): CalendarEventsRepository
 }

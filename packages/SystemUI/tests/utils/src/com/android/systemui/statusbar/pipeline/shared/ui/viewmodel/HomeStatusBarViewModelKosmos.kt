@@ -42,6 +42,7 @@ import com.android.systemui.statusbar.layout.ui.viewmodel.statusBarBoundsViewMod
 import com.android.systemui.statusbar.layout.ui.viewmodel.statusBarContentInsetsViewModel
 import com.android.systemui.statusbar.notification.domain.interactor.activeNotificationsInteractor
 import com.android.systemui.statusbar.notification.icon.domain.interactor.statusBarNotificationIconsInteractor
+import com.android.systemui.statusbar.notification.stack.domain.interactor.headsUpNotificationInteractor
 import com.android.systemui.statusbar.phone.domain.interactor.darkIconInteractor
 import com.android.systemui.statusbar.phone.domain.interactor.lightsOutInteractor
 import com.android.systemui.statusbar.pipeline.battery.ui.viewmodel.batteryViewModelBasedOnSettingFactory
@@ -51,6 +52,7 @@ import com.android.systemui.statusbar.pipeline.shared.domain.interactor.statusBa
 import com.android.systemui.statusbar.pipeline.shared.ui.binder.HomeStatusBarViewBinder
 import com.android.systemui.statusbar.pipeline.shared.ui.binder.HomeStatusBarViewBinderImpl
 import com.android.systemui.statusbar.policy.domain.interactor.deviceProvisioningInteractor
+import com.android.systemui.statusbar.quickactions.calendar.domain.interactor.calendarPopupInteractor
 import com.android.systemui.statusbar.quickactions.ime.domain.interactor.imeIndicatorChipInteractor
 import com.android.systemui.statusbar.quickactions.popups.ui.viewmodel.statusBarPopupChipsViewModelFactory
 import com.android.systemui.statusbar.systemstatusicons.ui.viewmodel.systemStatusIconsViewModelFactory
@@ -113,6 +115,8 @@ var Kosmos.homeStatusBarViewModelFactory: (Int) -> HomeStatusBarViewModel by
                 deviceProvisioningInteractor = deviceProvisioningInteractor,
                 userLogoutInteractor = userLogoutInteractor,
                 scrollToTopInteractor = scrollToTopInteractor,
+                headsUpNotificationInteractor = headsUpNotificationInteractor,
+                calendarPopupInteractor = calendarPopupInteractor,
             )
         }
     }

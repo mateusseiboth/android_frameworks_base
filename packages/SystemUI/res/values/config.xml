@@ -1095,6 +1095,10 @@
     -->
     <bool name="config_useDesktopStatusBar">false</bool>
 
+    <!-- Whether a click on the desktop status bar's clock opens a calendar popup with the month
+         and the next events. -->
+    <bool name="config_statusBarClockOpensCalendar">false</bool>
+
     <!--
     Whether to draw the BrightnessDialog at the end of the screen
 

@@ -17,6 +17,7 @@
 package com.android.systemui.statusbar.quickactions.popups.ui.viewmodel
 
 import com.android.systemui.statusbar.quickactions.av.ui.viewmodel.AvControlsPopupViewModel
+import com.android.systemui.statusbar.quickactions.calendar.ui.viewmodel.CalendarPopupViewModel
 import com.android.systemui.statusbar.quickactions.media.ui.viewmodel.MediaControlPopupViewModel
 import com.android.systemui.statusbar.quickactions.screenrecord.ui.viewmodel.LargeScreenStopRecordingPopupViewModel2
 import com.android.systemui.statusbar.quickactions.sharescreen.ui.viewmodel.ShareScreenPrivacyIndicatorPopupViewModel
@@ -40,6 +41,10 @@ interface StatusBarPopupViewModel {
 
         interface ScreenRecording : Factory {
             override fun create(): LargeScreenStopRecordingPopupViewModel2
+        }
+
+        interface Calendar : Factory {
+            override fun create(): CalendarPopupViewModel
         }
     }
 }

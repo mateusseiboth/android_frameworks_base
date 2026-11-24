@@ -1893,4 +1893,8 @@
     <string name="ace_attribution_settings_button_accessibility_description" msgid="8426163772933746374">"Botão de configurações"</string>
     <string name="ace_attribution_thumbs_up_button_accessibility_description" msgid="3561722934830934360">"Botão de gostei"</string>
     <string name="ace_attribution_thumbs_down_button_accessibility_description" msgid="5471283747650437662">"Botão de não gostei"</string>
+    <string name="status_bar_calendar_open">Abrir agenda</string>
+    <string name="status_bar_calendar_no_events">Nenhum evento nos próximos dias</string>
+    <string name="status_bar_calendar_untitled_event">(Sem título)</string>
+    <string name="status_bar_calendar_all_day_event"><xliff:g id="date" example="seg., 24 de nov.">%1$s</xliff:g>, dia inteiro</string>
 </resources>

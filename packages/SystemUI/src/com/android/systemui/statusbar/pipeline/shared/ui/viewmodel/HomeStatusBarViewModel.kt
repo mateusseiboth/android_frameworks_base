@@ -82,6 +82,7 @@ import com.android.systemui.statusbar.pipeline.shared.ui.model.ChipsVisibilityMo
 import com.android.systemui.statusbar.pipeline.shared.ui.model.SystemInfoCombinedVisibilityModel
 import com.android.systemui.statusbar.pipeline.shared.ui.model.VisibilityModel
 import com.android.systemui.statusbar.policy.domain.interactor.DeviceProvisioningInteractor
+import com.android.systemui.statusbar.quickactions.calendar.domain.interactor.CalendarPopupInteractor
 import com.android.systemui.statusbar.quickactions.ime.domain.interactor.ImeIndicatorChipInteractor
 import com.android.systemui.statusbar.quickactions.popups.StatusBarPopupChips
 import com.android.systemui.statusbar.quickactions.popups.ui.viewmodel.StatusBarPopupChipsViewModel
@@ -171,6 +172,9 @@ interface HomeStatusBarViewModel : Activatable {
 
     /** Notifies that the clock container was clicked. */
     fun onClockClicked()
+
+    /** Notifies where the clock container is, in window coordinates. */
+    fun onClockBoundsChanged(bounds: RectF) {}
 
     /** Notifies that the status bar's blank space was clicked. */
     fun onSpacerClicked()
@@ -311,6 +315,7 @@ constructor(
     private val userLogoutInteractor: UserLogoutInteractor,
     private val scrollToTopInteractor: ScrollToTopInteractor,
     private val headsUpNotificationInteractor: HeadsUpNotificationInteractor,
+    private val calendarPopupInteractor: CalendarPopupInteractor,
 ) : HomeStatusBarViewModel, HydratedActivatable(enableEnqueuedActivations = true) {
 
     val logger = loggerFactory.getOrCreate(logBufferName(thisDisplayId), 60)
@@ -498,6 +503,11 @@ constructor(
         // TODO: b/478352392 - Consider achieving the same effect by hiding InputMethodPicker upon
         // "out-of-bounds click" instead, via SceneContainerViewModel.onEmptySpaceMotionEvent().
         imeIndicatorChipInteractor.hideInputMethodPicker(thisDisplayId)
+        calendarPopupInteractor.onClockClicked()
+    }
+
+    override fun onClockBoundsChanged(bounds: RectF) {
+        calendarPopupInteractor.onClockBoundsChanged(bounds)
     }
 
     override fun onSpacerClicked() {

@@ -5062,4 +5062,13 @@
     <!-- Accessibility label for the thumbs down button on attribution dialog. [CHAR_LIMIT=NONE] -->
     <string name="ace_attribution_thumbs_down_button_accessibility_description">Thumbs down feedback button</string>
 
+
+    <!-- Desktop status bar calendar popup: button that opens the calendar app. [CHAR LIMIT=30] -->
+    <string name="status_bar_calendar_open">Open calendar</string>
+    <!-- Desktop status bar calendar popup: shown when there are no events in the next days. [CHAR LIMIT=NONE] -->
+    <string name="status_bar_calendar_no_events">No upcoming events</string>
+    <!-- Desktop status bar calendar popup: title of an event without one. [CHAR LIMIT=30] -->
+    <string name="status_bar_calendar_untitled_event">(No title)</string>
+    <!-- Desktop status bar calendar popup: date of an all day event, e.g. "Mon, Nov 24, All day". [CHAR LIMIT=NONE] -->
+    <string name="status_bar_calendar_all_day_event"><xliff:g id="date" example="Mon, Nov 24">%1$s</xliff:g>, All day</string>
 </resources>

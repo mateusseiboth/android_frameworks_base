@@ -45,6 +45,8 @@ import com.android.systemui.scene.ui.composable.Overlay
 import com.android.systemui.shade.ui.composable.OverlayScrim
 import com.android.systemui.statusbar.quickactions.av.ui.compose.AvControlsChipPopup
 import com.android.systemui.statusbar.quickactions.av.ui.viewmodel.AvControlsPopupViewModel
+import com.android.systemui.statusbar.quickactions.calendar.ui.compose.CalendarPopup
+import com.android.systemui.statusbar.quickactions.calendar.ui.viewmodel.CalendarPopupViewModel
 import com.android.systemui.statusbar.quickactions.media.ui.compose.MediaControlPopup
 import com.android.systemui.statusbar.quickactions.media.ui.viewmodel.MediaControlPopupViewModel
 import com.android.systemui.statusbar.quickactions.popups.ui.viewmodel.StatusBarPopupViewModel
@@ -174,6 +176,9 @@ fun ContentScope.QuickActionsPanel(
             }
             is LargeScreenStopRecordingPopupViewModel2 -> {
                 LargeScreenStopRecordingPopup(viewModel = viewModel, modifier = panelModifier)
+            }
+            is CalendarPopupViewModel -> {
+                CalendarPopup(viewModel = viewModel, modifier = panelModifier)
             }
             else ->
                 error(
