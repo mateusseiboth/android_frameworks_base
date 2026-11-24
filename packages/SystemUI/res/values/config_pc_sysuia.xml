@@ -19,4 +19,8 @@
          with the play/pause button in place of the icon while the pointer is over the chip,
          instead of the play/pause button and a waveform. -->
     <bool name="config_statusBarMediaChipShowsTitle">false</bool>
+
+    <!-- Whether heads-up notifications on the desktop status bar are fully rounded and keep their
+         header while they float over the screen: pinned, animating away, or pulled down. -->
+    <bool name="config_desktopHeadsUpAppearance">false</bool>
 </resources>
