@@ -320,6 +320,7 @@ class DesktopTasksController(
             mainExecutor,
             context,
             displayController,
+            transitions,
         )
 
     private val mOnAnimationFinishedCallback = { releaseVisualIndicator() }
@@ -1126,7 +1127,8 @@ class DesktopTasksController(
                 }
             }
         }
-        transitions.startTransition(TRANSIT_CHANGE, wct, null)
+        val transition = transitions.startTransition(TRANSIT_CHANGE, wct, null)
+        desktopScrimController.trackTransitionToUpdateScrim(transition)
     }
 
     private fun handleProjectedModeDisconnect(

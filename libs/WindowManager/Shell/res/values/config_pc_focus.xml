@@ -19,4 +19,10 @@
          tiled window) is computed again when the stable insets of a display change, for example
          when the taskbar or the status bar changes size. -->
     <bool name="config_desktopScrimFollowsStableInsets">false</bool>
+
+    <!-- Whether the desktop scrim is computed again when a transition it does not drive is over:
+         a window leaving picture-in-picture for the desktop, or the window bounds update after a
+         display layout change. Keeps the status bar from staying opaque or transparent by
+         mistake. -->
+    <bool name="config_desktopScrimTracksTransitions">false</bool>
 </resources>

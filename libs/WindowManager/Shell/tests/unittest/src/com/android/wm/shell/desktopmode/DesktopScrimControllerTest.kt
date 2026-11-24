@@ -18,17 +18,24 @@ package com.android.wm.shell.desktopmode
 import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.platform.test.annotations.EnableFlags
+import android.os.Binder
 import android.testing.AndroidTestingRunner
 import android.view.Display.DEFAULT_DISPLAY
+import android.view.WindowManager.TRANSIT_CHANGE
 import androidx.test.filters.SmallTest
+import com.android.testing.wm.util.TransitionInfoBuilder
 import com.android.wm.shell.R
 import com.android.wm.shell.RootTaskDisplayAreaOrganizer
 import com.android.wm.shell.ShellTestCase
 import com.android.wm.shell.TestShellExecutor
 import com.android.wm.shell.common.DisplayController
 import com.android.wm.shell.desktopmode.DesktopModeEventLogger.Companion.ExitReason
+import com.android.wm.shell.desktopmode.DesktopTestHelpers.createFreeformTask
+import com.android.wm.shell.desktopmode.DesktopTestHelpers.createFullscreenTask
 import com.android.wm.shell.shared.desktopmode.DesktopScrimListener
 import com.android.wm.shell.sysui.ShellController
+import com.android.wm.shell.transition.Transitions
+import com.android.wm.shell.transition.Transitions.TRANSIT_EXIT_PIP
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,6 +62,7 @@ class DesktopScrimControllerTest : ShellTestCase() {
     private val rootTaskDisplayAreaOrganizer = mock<RootTaskDisplayAreaOrganizer>()
     private val keyguardManager = mock<KeyguardManager>()
     private val displayController = mock<DisplayController>()
+    private val transitions = mock<Transitions>()
     private val displayIds = intArrayOf(DEFAULT_DISPLAY)
 
     private val shellExecutor = TestShellExecutor()
@@ -74,6 +82,7 @@ class DesktopScrimControllerTest : ShellTestCase() {
                 shellExecutor,
                 mContext,
                 displayController,
+                transitions,
             )
     }
 
@@ -247,6 +256,140 @@ class DesktopScrimControllerTest : ShellTestCase() {
         shellExecutor.flushAll()
 
         verify(desktopScrimListener, never()).onDesktopScrimEffectChanged(any(), any())
+    }
+
+    @Test
+    fun transitionObserver_registeredWhenEnabled() {
+        mContext.orCreateTestableResources.addOverride(
+            R.bool.config_desktopScrimTracksTransitions,
+            true,
+        )
+
+        controller.onInit()
+
+        verify(transitions).registerObserver(controller)
+    }
+
+    @Test
+    fun transitionObserver_notRegisteredWhenDisabled() {
+        mContext.orCreateTestableResources.addOverride(
+            R.bool.config_desktopScrimTracksTransitions,
+            false,
+        )
+
+        controller.onInit()
+
+        verify(transitions, never()).registerObserver(any())
+    }
+
+    @Test
+    @EnableFlags(com.android.systemui.Flags.FLAG_OPAQUE_STATUS_BAR)
+    fun exitPipToFreeformFinished_recomputesScrim() {
+        enableTransitionTracking()
+        val transition = Binder()
+        val info =
+            TransitionInfoBuilder(TRANSIT_EXIT_PIP)
+                .addChange(TRANSIT_CHANGE, createFreeformTask())
+                .build()
+
+        controller.onTransitionReady(transition, info, mock(), mock())
+        controller.onTransitionFinished(transition, /* aborted= */ false)
+        shellExecutor.flushAll()
+
+        verify(desktopScrimListener).onDesktopScrimEffectChanged(DEFAULT_DISPLAY, true)
+    }
+
+    @Test
+    @EnableFlags(com.android.systemui.Flags.FLAG_OPAQUE_STATUS_BAR)
+    fun exitPipToFreeformAborted_keepsScrim() {
+        enableTransitionTracking()
+        val transition = Binder()
+        val info =
+            TransitionInfoBuilder(TRANSIT_EXIT_PIP)
+                .addChange(TRANSIT_CHANGE, createFreeformTask())
+                .build()
+
+        controller.onTransitionReady(transition, info, mock(), mock())
+        controller.onTransitionFinished(transition, /* aborted= */ true)
+        shellExecutor.flushAll()
+
+        verify(desktopScrimListener, never()).onDesktopScrimEffectChanged(any(), any())
+    }
+
+    @Test
+    @EnableFlags(com.android.systemui.Flags.FLAG_OPAQUE_STATUS_BAR)
+    fun exitPipToFullscreenFinished_keepsScrim() {
+        enableTransitionTracking()
+        val transition = Binder()
+        val info =
+            TransitionInfoBuilder(TRANSIT_EXIT_PIP)
+                .addChange(TRANSIT_CHANGE, createFullscreenTask())
+                .build()
+
+        controller.onTransitionReady(transition, info, mock(), mock())
+        controller.onTransitionFinished(transition, /* aborted= */ false)
+        shellExecutor.flushAll()
+
+        verify(desktopScrimListener, never()).onDesktopScrimEffectChanged(any(), any())
+    }
+
+    @Test
+    @EnableFlags(com.android.systemui.Flags.FLAG_OPAQUE_STATUS_BAR)
+    fun mergedExitPipToFreeform_recomputesScrimWhenThePlayingTransitionFinishes() {
+        enableTransitionTracking()
+        val merged = Binder()
+        val playing = Binder()
+        val info =
+            TransitionInfoBuilder(TRANSIT_EXIT_PIP)
+                .addChange(TRANSIT_CHANGE, createFreeformTask())
+                .build()
+
+        controller.onTransitionReady(merged, info, mock(), mock())
+        controller.onTransitionMerged(merged, playing)
+        controller.onTransitionFinished(playing, /* aborted= */ false)
+        shellExecutor.flushAll()
+
+        verify(desktopScrimListener).onDesktopScrimEffectChanged(DEFAULT_DISPLAY, true)
+    }
+
+    @Test
+    @EnableFlags(com.android.systemui.Flags.FLAG_OPAQUE_STATUS_BAR)
+    fun trackedDisplayLayoutTransitionAborted_recomputesScrim() {
+        enableTransitionTracking()
+        val transition = Binder()
+
+        controller.trackTransitionToUpdateScrim(transition)
+        controller.onTransitionFinished(transition, /* aborted= */ true)
+        shellExecutor.flushAll()
+
+        verify(desktopScrimListener).onDesktopScrimEffectChanged(DEFAULT_DISPLAY, true)
+    }
+
+    private fun enableTransitionTracking() {
+        mContext.orCreateTestableResources.addOverride(
+            R.bool.config_desktopScrimTracksTransitions,
+            true,
+        )
+        controller.onInit()
+        controller.addDesktopScrimListener(desktopScrimListener, shellExecutor)
+        whenever(
+                desktopTasksController.isAnyTaskMaximizedOrDoubleTiled(
+                    DEFAULT_DISPLAY,
+                    DEFAULT_USER_ID,
+                    null,
+                    null,
+                    null,
+                )
+            )
+            .thenReturn(true)
+        whenever(
+                desktopTasksController.isAnyTaskMaximizedOrSnapped(
+                    DEFAULT_DISPLAY,
+                    DEFAULT_USER_ID,
+                    null,
+                )
+            )
+            .thenReturn(true)
     }
 
     // TODO(b/489916353): Add tests to cover all other methods in DesktopScrimController
