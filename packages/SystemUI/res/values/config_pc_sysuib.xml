@@ -26,4 +26,8 @@
     <!-- Side margins of the horizontal volume dialog's slider without the ringer drawer and the
          settings button. -->
     <dimen name="volume_dialog_slider_horizontal_margin_without_buttons">38dp</dimen>
+
+    <!-- Whether a mouse drag moves a tile in the quick settings edit grid at once, without the
+         long press that touch needs. -->
+    <bool name="config_qsEditModeImmediateMouseDrag">false</bool>
 </resources>
