@@ -96,6 +96,13 @@ sealed class QuickActionChipModel {
         val togglePopup: (Context, RectF) -> Unit = { _, _ -> },
         val contentDescription: ContentDescription? = null,
         val popupViewModelFactory: StatusBarPopupViewModel.Factory? = null,
+        /** Icons shown in place of [icons] while the pointer is over the chip, if any. */
+        val hoverIcons: List<ChipIcon>? = null,
+        /**
+         * Whether the chip shows a title: larger text and icons, a width kept between a minimum
+         * and a maximum, and a title that scrolls while the pointer is over the chip.
+         */
+        val isTitleChip: Boolean = false,
     ) : QuickActionChipModel() {
         override val logName = "Shown(id=$chipId, toggled=$isPopupShown)"
     }

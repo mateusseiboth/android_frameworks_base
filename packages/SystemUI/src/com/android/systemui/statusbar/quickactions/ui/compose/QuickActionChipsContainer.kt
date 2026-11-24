@@ -198,6 +198,8 @@ private fun Popup(chip: QuickActionChipModel.PopupChip, modifier: Modifier = Mod
             colors = chip.colors,
             contentDescription = chip.contentDescription,
             onClick = { chip.togglePopup(context, RectF(boundsCache)) },
+            hoverIcons = chip.hoverIcons,
+            isTitleChip = chip.isTitleChip,
         )
     }
 }

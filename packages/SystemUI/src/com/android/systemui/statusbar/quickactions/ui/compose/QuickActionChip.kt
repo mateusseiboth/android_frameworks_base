@@ -17,6 +17,7 @@
 package com.android.systemui.statusbar.quickactions.ui.compose
 
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,6 +55,7 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
@@ -81,6 +83,8 @@ fun QuickActionChip(
     contentDescription: ContentDescription?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    hoverIcons: List<ChipIcon>? = null,
+    isTitleChip: Boolean = false,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     cornerRadius: Dp = dimensionResource(id = R.dimen.ongoing_activity_chip_corner_radius),
     horizontalPadding: PaddingValues =
@@ -120,7 +124,8 @@ fun QuickActionChip(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
             modifier =
-                Modifier.height(dimensionResource(R.dimen.ongoing_appops_chip_height))
+                chipWidth(isTitleChip)
+                    .height(dimensionResource(R.dimen.ongoing_appops_chip_height))
                     .clip(chipShape)
                     .background(chipBackgroundColor)
                     .border(
@@ -135,12 +140,30 @@ fun QuickActionChip(
                     .indication(interactionSource, indication)
                     .padding(horizontalPadding),
         ) {
-            ChipIcons(chipIcons = icons, colors = colors, isSelected = isSelected)
+            ChipIcons(
+                chipIcons = chipIconsFor(icons, hoverIcons, hoveredState),
+                colors = colors,
+                isSelected = isSelected,
+                iconSize = chipIconSize(isTitleChip),
+            )
 
             when (chipContent) {
-                is ChipContent.Text -> {
-                    ChipText(text = chipContent.text, colors = colors, isSelected = isSelected)
-                }
+                is ChipContent.Text ->
+                    when {
+                        isTitleChip ->
+                            TitleChipText(
+                                text = chipContent.text,
+                                colors = colors,
+                                isSelected = isSelected,
+                                isHovered = hoveredState,
+                            )
+                        else ->
+                            ChipText(
+                                text = chipContent.text,
+                                colors = colors,
+                                isSelected = isSelected,
+                            )
+                    }
                 is ChipContent.Timer -> {
                     val timerState =
                         rememberChronometerState(
@@ -173,6 +196,79 @@ fun QuickActionChip(
                 null -> {}
             }
         }
+    }
+}
+
+/** A title chip keeps its width between a minimum and a maximum; other chips wrap content. */
+@Composable
+private fun chipWidth(isTitleChip: Boolean): Modifier {
+    if (!isTitleChip) return Modifier
+    return Modifier.widthIn(
+        min = dimensionResource(R.dimen.status_bar_media_chip_min_width),
+        max = dimensionResource(R.dimen.status_bar_media_chip_max_width),
+    )
+}
+
+@Composable
+private fun chipIconSize(isTitleChip: Boolean): Dp {
+    if (!isTitleChip) return 20.dp
+    return dimensionResource(R.dimen.status_bar_media_chip_icon_size)
+}
+
+/**
+ * The text of a title chip: it takes the width the chip has left, fades at its end when it does
+ * not fit, and scrolls while the pointer is over the chip so the whole title can be read.
+ */
+@Composable
+private fun TitleChipText(
+    text: String,
+    colors: ChipColors,
+    isSelected: Boolean,
+    isHovered: Boolean,
+) {
+    val textStyle = MaterialTheme.typography.titleSmallEmphasized
+    val textMeasurer = rememberTextMeasurer()
+    var textOverflow by remember { mutableStateOf(false) }
+    val overflowStyle =
+        chipTextOverflowStyle(isTitleChip = true, isHovered = isHovered, hasOverflow = textOverflow)
+
+    Text(
+        text = text,
+        style = textStyle,
+        softWrap = false,
+        color =
+            colors.chipContent(isSelected = isSelected, colorScheme = MaterialTheme.colorScheme),
+        modifier =
+            Modifier.measureOverflow(text, textStyle, textMeasurer) { textOverflow = it }
+                .fadeEdges(
+                    fadeEdges = { overflowStyle.fadeEdges },
+                    fadeLength =
+                        dimensionResource(R.dimen.status_bar_media_chip_text_fading_edge_length),
+                )
+                .thenIf(overflowStyle.isScrolling) {
+                    Modifier.basicMarquee(iterations = Int.MAX_VALUE)
+                },
+    )
+}
+
+/**
+ * Reports whether [text] is wider than the space it gets, and draws it in an offscreen layer
+ * when it is, which the fade of [fadeEdges] needs.
+ */
+private fun Modifier.measureOverflow(
+    text: String,
+    textStyle: TextStyle,
+    textMeasurer: TextMeasurer,
+    onOverflowChanged: (Boolean) -> Unit,
+): Modifier = layout { measurables, constraints ->
+    val placeable = measurables.measure(constraints)
+    val intrinsicWidth = textMeasurer.measure(text, textStyle, softWrap = false).size.width
+    val hasOverflow = intrinsicWidth > constraints.maxWidth
+    onOverflowChanged(hasOverflow)
+
+    layout(placeable.width, placeable.height) {
+        if (!hasOverflow) return@layout placeable.place(0, 0)
+        placeable.placeWithLayer(0, 0) { compositingStrategy = CompositingStrategy.Offscreen }
     }
 }
 
@@ -223,7 +319,12 @@ private fun ChipText(
 }
 
 @Composable
-private fun ChipIcons(chipIcons: List<ChipIcon>, colors: ChipColors, isSelected: Boolean) {
+private fun ChipIcons(
+    chipIcons: List<ChipIcon>,
+    colors: ChipColors,
+    isSelected: Boolean,
+    iconSize: Dp = 20.dp,
+) {
     val iconBackgroundColor =
         colors.iconBackground(isSelected = isSelected, colorScheme = MaterialTheme.colorScheme)
 
@@ -232,7 +333,7 @@ private fun ChipIcons(chipIcons: List<ChipIcon>, colors: ChipColors, isSelected:
         Icon(
             icon = chipIcon.icon,
             modifier =
-                Modifier.size(20.dp)
+                Modifier.size(iconSize)
                     .thenIf(chipIcon.onClick != null) {
                         Modifier.clickable(role = Role.Button, onClick = chipIcon.onClick!!)
                     }
@@ -247,6 +348,35 @@ private fun ChipIcons(chipIcons: List<ChipIcon>, colors: ChipColors, isSelected:
                     colorScheme = MaterialTheme.colorScheme,
                 ),
         )
+    }
+}
+
+private fun Modifier.fadeEdges(
+    fadeEdges: () -> ChipTextFadeEdges,
+    fadeLength: Dp,
+): Modifier = drawWithCache {
+    val width = size.width
+    val fade = (fadeLength.toPx() / width).coerceIn(0f, 0.5f)
+    val endFade =
+        Brush.horizontalGradient(
+            0f to Color.Black,
+            1f - fade to Color.Black,
+            1f to Color.Transparent,
+        )
+    val bothFade =
+        Brush.horizontalGradient(
+            0f to Color.Transparent,
+            fade to Color.Black,
+            1f - fade to Color.Black,
+            1f to Color.Transparent,
+        )
+    onDrawWithContent {
+        drawContent()
+        when (fadeEdges()) {
+            ChipTextFadeEdges.NONE -> {}
+            ChipTextFadeEdges.END -> drawRect(brush = endFade, blendMode = BlendMode.DstIn)
+            ChipTextFadeEdges.BOTH -> drawRect(brush = bothFade, blendMode = BlendMode.DstIn)
+        }
     }
 }
 

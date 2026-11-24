@@ -46,6 +46,9 @@ constructor(
     private val popupViewModelFactory: MediaControlPopupViewModel.Factory,
 ) : StatusBarPopupChipViewModel, HydratedActivatable() {
 
+    private val isTitleChip =
+        applicationContext.resources.getBoolean(R.bool.config_statusBarMediaChipShowsTitle)
+
     /**
      * A snapshot [State] of the current [QuickActionChipModel]. This emits a new
      * [QuickActionChipModel] whenever the underlying [MediaControlChipModel] changes.
@@ -62,6 +65,8 @@ constructor(
             return QuickActionChipModel.Hidden(QuickActionChipId.MediaControl)
         }
 
+        if (isTitleChip) return model.toTitleChipModel()
+
         val contentDescription = model.appName?.let { ContentDescription.Loaded(description = it) }
 
         val waveformIcon =
@@ -77,6 +82,20 @@ constructor(
             popupViewModelFactory = popupViewModelFactory,
         )
     }
+
+    /**
+     * The chip with the app icon and the title of what is playing; the play/pause button takes the
+     * place of the app icon while the pointer is over the chip.
+     */
+    private fun MediaControlChipModel.toTitleChipModel(): QuickActionChipModel =
+        QuickActionChipModel.PopupChip(
+            chipId = QuickActionChipId.MediaControl,
+            icons = listOf(getDefaultIcon()),
+            chipContent = ChipContent.Text(songName.toString()),
+            popupViewModelFactory = popupViewModelFactory,
+            hoverIcons = listOf(createIcon()),
+            isTitleChip = true,
+        )
 
     private fun MediaControlChipModel.createIcon(): ChipIcon {
         val playOrPause = playOrPause ?: return getDefaultIcon()
