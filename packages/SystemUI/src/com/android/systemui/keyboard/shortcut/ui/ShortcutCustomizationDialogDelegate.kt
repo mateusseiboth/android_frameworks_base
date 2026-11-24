@@ -36,4 +36,6 @@ class ShortcutCustomizationDialogDelegate : DialogDelegate<SystemUIDialog> {
     override fun getHeight(dialog: SystemUIDialog): Int {
         return WindowManager.LayoutParams.WRAP_CONTENT
     }
+
+    override fun shouldStashTaskbar(dialog: SystemUIDialog): Boolean = false
 }

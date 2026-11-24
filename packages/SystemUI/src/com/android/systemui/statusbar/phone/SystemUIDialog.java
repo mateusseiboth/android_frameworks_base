@@ -395,6 +395,11 @@ public class SystemUIDialog extends AlertDialog {
         return mDelegate.getHeight(this);
     }
 
+    /** Whether the taskbar of this dialog's display stashes while this dialog shows. */
+    public boolean shouldStashTaskbar() {
+        return mDelegate.shouldStashTaskbar(this);
+    }
+
     @Override
     protected final void onStart() {
         super.onStart();

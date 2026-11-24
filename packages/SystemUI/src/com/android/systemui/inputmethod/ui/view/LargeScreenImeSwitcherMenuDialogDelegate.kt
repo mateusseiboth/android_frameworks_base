@@ -113,6 +113,9 @@ constructor(
         return desiredWidth.coerceAtMost(screenWidth)
     }
 
+    // The menu opens from the status bar like its popups, which leave the taskbar in place.
+    override fun shouldStashTaskbar(dialog: SystemUIDialog): Boolean = false
+
     @MainThread
     override fun show() {
         Assert.isMainThread()

@@ -136,7 +136,11 @@ fun SystemUIDialogFactory.create(
     )
 }
 
-/** Same as [create] but creates a bottom sheet dialog. */
+/**
+ * Same as [create] but creates a bottom sheet dialog.
+ *
+ * @param shouldStashTaskbar whether the taskbar stashes while the bottom sheet shows.
+ */
 fun SystemUIDialogFactory.createBottomSheet(
     context: Context = this.applicationContext,
     theme: Int = R.style.Theme_SystemUI_BottomSheet,
@@ -146,6 +150,7 @@ fun SystemUIDialogFactory.createBottomSheet(
     // TODO(b/337205027): remove maxWidth parameter when aligned to M3 spec
     maxWidth: Dp = Dp.Unspecified,
     containerColorProvider: @Composable () -> Color = { MaterialTheme.colorScheme.surfaceContainer },
+    shouldStashTaskbar: Boolean = true,
 ): ComponentSystemUIDialog {
     return create(
         context = context,
@@ -154,7 +159,7 @@ fun SystemUIDialogFactory.createBottomSheet(
         // TODO(b/475196806): Expose refreshBackgroundOnThemeChange as an argument (default true)
         //  after fixing duplicate BottomSheet background drawing.
         refreshBackgroundOnThemeChange = false,
-        delegate = EdgeToEdgeDialogDelegate(),
+        delegate = EdgeToEdgeDialogDelegate(shouldStashTaskbar = shouldStashTaskbar),
         content = { dialog ->
             val dragState =
                 if (isDraggable)

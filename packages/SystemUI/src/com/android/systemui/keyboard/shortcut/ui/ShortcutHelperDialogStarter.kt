@@ -89,6 +89,8 @@ constructor(
 
     private fun createShortcutHelperDialog(): Dialog {
         return dialogFactory.createBottomSheet(
+            // The taskbar stays usable while the shortcuts are listed.
+            shouldStashTaskbar = false,
             content = { dialog ->
                 val shortcutsUiState by
                     shortcutHelperViewModel.shortcutsUiState.collectAsStateWithLifecycle()

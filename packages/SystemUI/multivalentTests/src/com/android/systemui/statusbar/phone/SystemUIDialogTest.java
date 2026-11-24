@@ -17,6 +17,7 @@
 package com.android.systemui.statusbar.phone;
 
 import static com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_DIALOG_SHOWING;
+import static com.android.systemui.shared.system.QuickStepContract.SYSUI_STATE_DIALOG_STASH_TASKBAR;
 import static com.android.systemui.statusbar.phone.SystemUIDialog.DEFAULT_DISMISS_ON_DEVICE_LOCK;
 import static com.android.systemui.statusbar.phone.SystemUIDialog.DEFAULT_THEME;
 
@@ -321,6 +322,32 @@ public class SystemUIDialogTest extends SysuiTestCase {
         inOrder.verify(mDelegate).onWindowFocusChanged(dialog, /* hasFocus= */ true);
         inOrder.verify(mDelegate).onConfigurationChanged(dialog, configuration);
         inOrder.verify(mDelegate).onStop(dialog);
+    }
+
+    @Test
+    public void dialogStashTaskbarFlag_onlyForDialogsThatAsk() {
+        when(mDelegate.shouldStashTaskbar(ArgumentMatchers.any())).thenReturn(false);
+        SystemUIDialog keepsTaskbar = createDialogWithDelegate(mContext, mDelegate,
+                /* shouldAcsDismissDialog */ true, mBlurInteractor);
+        SystemUIDialog.Delegate stashingDelegate = mock(SystemUIDialog.Delegate.class);
+        when(stashingDelegate.getBackAnimationSpec(ArgumentMatchers.any()))
+                .thenReturn(mock(BackAnimationSpec.class));
+        when(stashingDelegate.shouldStashTaskbar(ArgumentMatchers.any())).thenReturn(true);
+        SystemUIDialog stashes = createDialogWithDelegate(mContext, stashingDelegate,
+                /* shouldAcsDismissDialog */ true, mBlurInteractor);
+
+        keepsTaskbar.show();
+        assertThat((mSysUiState.getFlags() & SYSUI_STATE_DIALOG_SHOWING) != 0).isTrue();
+        assertThat((mSysUiState.getFlags() & SYSUI_STATE_DIALOG_STASH_TASKBAR) != 0).isFalse();
+
+        stashes.show();
+        assertThat((mSysUiState.getFlags() & SYSUI_STATE_DIALOG_STASH_TASKBAR) != 0).isTrue();
+
+        stashes.dismiss();
+        assertThat((mSysUiState.getFlags() & SYSUI_STATE_DIALOG_STASH_TASKBAR) != 0).isFalse();
+        assertThat((mSysUiState.getFlags() & SYSUI_STATE_DIALOG_SHOWING) != 0).isTrue();
+
+        keepsTaskbar.dismiss();
     }
 
     private static SystemUIDialog createDialogWithDelegate(Context context,
