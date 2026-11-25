@@ -28,12 +28,43 @@ import com.android.systemui.common.ui.drawable.FocusRingDrawable
 import com.android.systemui.common.ui.drawable.FocusRingShape
 import com.android.systemui.res.R
 import com.google.common.truth.Truth.assertThat
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @SmallTest
 @RunWith(AndroidJUnit4::class)
 class MaterialFocusRingsTest : SysuiTestCase() {
+
+    @Before
+    fun setUp() {
+        MaterialFocusRings.install(context)
+    }
+
+    // A notification's views are inflated with the posting app's context, whose resources do not
+    // have SystemUI's: the config and dimensions must come from SystemUI's own.
+    @Test
+    fun applyTo_viewOfAnotherPackage_usesSystemUiResources() {
+        setMaterialFocusRings(true)
+        val appContext = context.createPackageContext("android", 0)
+        val button = Button(appContext)
+
+        MaterialFocusRings.applyTo(button, FocusRingShape(cornerRadius = 4f))
+
+        assertThat(button.foreground).isInstanceOf(FocusRingDrawable::class.java)
+    }
+
+    @Test
+    fun applyToNotificationActions_viewsOfAnotherPackage_getRings() {
+        setMaterialFocusRings(true)
+        val appContext = context.createPackageContext("android", 0)
+        val button = Button(appContext)
+        val actions = LinearLayout(appContext).apply { addView(button) }
+
+        MaterialFocusRings.applyToNotificationActions(actions)
+
+        assertThat(button.foreground).isInstanceOf(FocusRingDrawable::class.java)
+    }
 
     @Test
     fun applyTo_configOff_leavesTheViewAlone() {

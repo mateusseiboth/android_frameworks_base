@@ -17,7 +17,9 @@
 package com.android.systemui.common.ui.view
 
 import android.app.AlertDialog
+import android.content.Context
 import android.content.DialogInterface
+import android.content.res.Resources
 import android.graphics.Insets
 import android.graphics.drawable.LayerDrawable
 import android.view.View
@@ -34,8 +36,22 @@ import com.android.systemui.res.R
  * action, expand and smart reply buttons, and dialog buttons. They share one ring color, stroke
  * width and gap; each surface gives the shape the ring follows. Nothing changes unless
  * config_materialFocusRings is set.
+ *
+ * The config and dimensions are SystemUI's: they come from the context given to [install], because a
+ * notification's views are inflated with the posting app's context, whose resources lack them.
  */
 object MaterialFocusRings {
+
+    @Volatile private var systemUiContext: Context? = null
+
+    /** Gives the SystemUI context whose resources the rings read. Call it once, at startup. */
+    @JvmStatic
+    fun install(context: Context) {
+        systemUiContext = context
+    }
+
+    private fun resourcesFor(view: View): Resources =
+        systemUiContext?.resources ?: view.resources
 
     private val DIALOG_BUTTONS =
         listOf(
@@ -47,7 +63,7 @@ object MaterialFocusRings {
     /** Draws a ring around [view] while it has keyboard focus. Calling it again updates [shape]. */
     @JvmStatic
     fun applyTo(view: View, shape: FocusRingShape) {
-        val resources = view.resources
+        val resources = resourcesFor(view)
         if (!resources.getBoolean(R.bool.config_materialFocusRings)) return
         val existing = view.getTag(R.id.material_focus_ring) as? FocusRingDrawable
         if (existing != null) {
@@ -94,7 +110,7 @@ object MaterialFocusRings {
     /** A ring for a smart reply or smart action chip, which is inset vertically in its button. */
     @JvmStatic
     fun applyToSmartReplyButton(button: Button) {
-        val resources = button.resources
+        val resources = resourcesFor(button)
         val radius =
             resources.getDimension(R.dimen.notification_2025_smart_reply_button_corner_radius)
         val inset = resources.getDimension(R.dimen.notification_2025_smart_reply_button_inset)
@@ -121,7 +137,8 @@ object MaterialFocusRings {
     }
 
     private fun findButtonCornerRadius(view: View): Float {
-        val fallback = view.resources.getDimension(R.dimen.notification_fallback_focus_ring_radius)
+        val fallback =
+            resourcesFor(view).getDimension(R.dimen.notification_fallback_focus_ring_radius)
         return view.context.obtainStyledAttributes(intArrayOf(android.R.attr.buttonCornerRadius)).use {
             it.getDimension(0, fallback)
         }

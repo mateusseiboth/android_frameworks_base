@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.ComposeView;
 import androidx.compose.ui.platform.ComposeView_androidKt;
 
 import com.android.internal.protolog.ProtoLog;
+import com.android.systemui.common.ui.view.MaterialFocusRings;
 import com.android.systemui.BootCompleteCacheImpl;
 import com.android.systemui.CoreStartable;
 import com.android.systemui.Flags;
@@ -121,6 +122,7 @@ public class SystemUIApplicationImpl extends SystemUIApplication implements
     public void onCreate() {
         super.onCreate();
         Log.v(TAG, "SystemUIApplication created.");
+        MaterialFocusRings.install(this);
         // This line is used to setup Dagger's dependency injection and should be kept at the
         // top of this method.
         TimingsTraceLog log = new TimingsTraceLog("SystemUIBootTiming",
