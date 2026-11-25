@@ -172,11 +172,17 @@ fun DesktopStatusBar(
             }
         }
         if (viewModel.isNotificationsChipAtStart) {
-            StartNotificationsChip(
-                viewModel = viewModel,
-                modifier =
-                    Modifier.padding(start = DesktopStatusBar.Dimensions.ChipInternalSpacing),
-            )
+            // One area for everything about notifications: the ongoing activities (timer, call,
+            // recording) and the media chip follow the notifications chip.
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(DesktopStatusBar.Dimensions.ElementSpacing, Alignment.Start),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = DesktopStatusBar.Dimensions.ChipInternalSpacing),
+            ) {
+                StartNotificationsChip(viewModel = viewModel)
+                ActivityChips(viewModel = viewModel, iconViewStore = iconViewStore)
+            }
         }
         Spacer(modifier = Modifier.weight(1f).clickable(onClick = viewModel::onSpacerClicked))
 
@@ -189,21 +195,8 @@ fun DesktopStatusBar(
                 SignOutButton(onSignOut = viewModel::onSignOut)
             }
 
-            val chipsVisibilityModel = viewModel.ongoingActivityChips
-            if (chipsVisibilityModel.areChipsAllowed) {
-                OngoingActivityChips(
-                    chips = chipsVisibilityModel.chips,
-                    iconViewStore = iconViewStore,
-                    onChipBoundsChanged = viewModel::onChipBoundsChanged,
-                    modifier = Modifier.sysUiResTagContainer(),
-                )
-            }
-
-            if (StatusBarPopupChips.isEnabled) {
-                QuickActionChipsContainer(
-                    chips = viewModel.popupChips,
-                    isDarkProvider = viewModel.areaDark::isDarkTheme,
-                )
+            if (!viewModel.isNotificationsChipAtStart) {
+                ActivityChips(viewModel = viewModel, iconViewStore = iconViewStore)
             }
 
             // The wrapper row prevents application of ElementSpacing between the chips. Instead,
@@ -222,6 +215,30 @@ fun DesktopStatusBar(
                 )
             }
         }
+    }
+}
+
+/** The ongoing activity chips (timer, call, recording) and the quick action chips (media). */
+@Composable
+private fun ActivityChips(
+    viewModel: HomeStatusBarViewModel,
+    iconViewStore: NotificationIconContainerViewBinder.IconViewStore?,
+) {
+    val chipsVisibilityModel = viewModel.ongoingActivityChips
+    if (chipsVisibilityModel.areChipsAllowed) {
+        OngoingActivityChips(
+            chips = chipsVisibilityModel.chips,
+            iconViewStore = iconViewStore,
+            onChipBoundsChanged = viewModel::onChipBoundsChanged,
+            modifier = Modifier.sysUiResTagContainer(),
+        )
+    }
+
+    if (StatusBarPopupChips.isEnabled) {
+        QuickActionChipsContainer(
+            chips = viewModel.popupChips,
+            isDarkProvider = viewModel.areaDark::isDarkTheme,
+        )
     }
 }
 
