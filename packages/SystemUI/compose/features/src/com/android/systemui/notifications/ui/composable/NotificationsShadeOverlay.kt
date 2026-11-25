@@ -47,6 +47,7 @@ import com.android.compose.lifecycle.LaunchedEffectWithLifecycle
 import com.android.internal.jank.InteractionJankMonitor
 import com.android.systemui.dagger.SysUISingleton
 import com.android.systemui.keyguard.ui.composable.elements.LockscreenElements
+import com.android.systemui.keyguard.ui.composable.elements.NotificationStackElementProvider
 import com.android.systemui.lifecycle.rememberViewModel
 import com.android.systemui.media.remedia.ui.compose.Media
 import com.android.systemui.media.remedia.ui.compose.MediaPresentationStyle
@@ -79,6 +80,7 @@ constructor(
     private val shadeSession: SaveableSession,
     private val stackScrollView: Lazy<NotificationScrollView>,
     private val jankMonitor: InteractionJankMonitor,
+    private val notificationStackElementProvider: Lazy<NotificationStackElementProvider>,
 ) : Overlay {
     override val key = Overlays.NotificationsShade
 
@@ -91,6 +93,11 @@ constructor(
     override val alwaysCompose: Boolean = false
 
     override suspend fun activate(): Nothing {
+        // The lockscreen's notification stack element binds the stack to the shade when it is
+        // created, with the lockscreen. A desktop that never shows the lockscreen opens this overlay
+        // first: without the binding the stack never expands and the overlay shows no notification.
+        // Not in init: the element needs the stack, inflated with the window that creates overlays.
+        notificationStackElementProvider.get()
         actionsViewModel.activate()
     }
 
