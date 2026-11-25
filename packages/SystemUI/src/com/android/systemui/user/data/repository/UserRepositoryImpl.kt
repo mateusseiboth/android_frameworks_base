@@ -242,9 +242,11 @@ constructor(
         selectedUser
             .map { selectedUser -> selectedUser.isHeadlessSystemUser() }
             .distinctUntilChanged()
+            // Eagerly: HsuCoordinator only reads the value, and a lazily started flow keeps the
+            // value of the first user (the headless system user) and hides every notification.
             .stateIn(
                 applicationScope,
-                SharingStarted.Lazily,
+                SharingStarted.Eagerly,
                 selectedUser.value.isHeadlessSystemUser(),
             )
 
