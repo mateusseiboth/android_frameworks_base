@@ -20,6 +20,7 @@ import android.annotation.ColorInt
 import android.content.res.Resources
 import android.graphics.Rect
 import android.graphics.RectF
+import android.os.UserHandle
 import android.view.View
 import androidx.compose.runtime.getValue
 import com.android.app.tracing.FlowTracing.traceEach
@@ -80,6 +81,7 @@ import com.android.systemui.statusbar.pipeline.shared.domain.interactor.HomeStat
 import com.android.systemui.statusbar.pipeline.shared.domain.interactor.HomeStatusBarInteractor
 import com.android.systemui.statusbar.pipeline.shared.domain.interactor.StatusBarVisibilityInteractor
 import com.android.systemui.statusbar.pipeline.shared.ui.model.ChipsVisibilityModel
+import com.android.systemui.statusbar.pipeline.shared.ui.model.StartNotificationIconsModel
 import com.android.systemui.statusbar.pipeline.shared.ui.model.SystemInfoCombinedVisibilityModel
 import com.android.systemui.statusbar.pipeline.shared.ui.model.VisibilityModel
 import com.android.systemui.statusbar.policy.domain.interactor.DeviceProvisioningInteractor
@@ -263,6 +265,17 @@ interface HomeStatusBarViewModel : Activatable {
     /** Emits `true` whenever there is at least one status bar notification. */
     val hasStatusBarNotifications: Boolean
 
+    /**
+     * True if the desktop status bar shows the notifications chip next to the clock instead of at
+     * the end, next to the quick settings chip.
+     */
+    val isNotificationsChipAtStart: Boolean
+        get() = false
+
+    /** Icons of the notifications chip next to the clock, see [isNotificationsChipAtStart]. */
+    val startNotificationIcons: StartNotificationIconsModel
+        get() = StartNotificationIconsModel.Empty
+
     /** True if the user can click on the notifications chip. */
     val isNotificationsChipClickable: Boolean
 
@@ -426,6 +439,21 @@ constructor(
             initialValue = false
         )
 
+    override val isNotificationsChipAtStart: Boolean
+        get() = resources.getBoolean(R.bool.config_desktopStatusBarNotificationsAtStart)
+
+    override val startNotificationIcons: StartNotificationIconsModel by
+        combine(
+                statusBarNotificationIconsInteractor.statusBarNotifs,
+                notificationsInteractor.allRepresentativeNotifications,
+            ) { notifs, notifsByKey ->
+                StartNotificationIconsModel.from(
+                    notifs,
+                    userIdOf = { key -> notifsByKey[key]?.let { UserHandle.getUserId(it.uid) } },
+                )
+            }
+            .hydratedStateOf(initialValue = StartNotificationIconsModel.Empty)
+
     override val isNotificationsChipClickable: Boolean by
         deviceProvisioningInteractor.isDeviceProvisioned.hydratedStateOf(initialValue = false)
 
@@ -511,7 +539,9 @@ constructor(
         // TODO: b/478352392 - Consider achieving the same effect by hiding InputMethodPicker upon
         // "out-of-bounds click" instead, via SceneContainerViewModel.onEmptySpaceMotionEvent().
         imeIndicatorChipInteractor.hideInputMethodPicker(thisDisplayId)
-        calendarPopupInteractor.onClockClicked()
+        if (calendarPopupInteractor.onClockClicked()) return
+        // Without the calendar, the clock and the notifications chip next to it open the shade.
+        if (isNotificationsChipAtStart) onNotificationIconChipClicked()
     }
 
     override fun onClockBoundsChanged(bounds: RectF) {

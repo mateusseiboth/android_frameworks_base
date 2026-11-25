@@ -46,9 +46,12 @@ constructor(
         clockBounds = RectF(bounds)
     }
 
-    /** Toggles the calendar popup under the clock. */
-    fun onClockClicked() {
-        if (!isEnabled) return
+    /**
+     * Toggles the calendar popup under the clock. Returns false when the calendar is off, so the
+     * click can do something else.
+     */
+    fun onClockClicked(): Boolean {
+        if (!isEnabled) return false
         quickActionsInteractor.toggle(
             QuickActionPanelModel(
                 chipId = QuickActionChipId.Calendar,
@@ -56,5 +59,6 @@ constructor(
                 panelContentViewModelFactory = popupViewModelFactory,
             )
         )
+        return true
     }
 }

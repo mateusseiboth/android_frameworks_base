@@ -76,6 +76,22 @@ class CalendarPopupInteractorTest : SysuiTestCase() {
             assertThat(quickActionsInteractor.activePanel).isNull()
         }
 
+    @Test
+    fun onClockClicked_enabled_reportsTheClickAsHandled() =
+        kosmos.runTest {
+            setCalendarEnabled(true)
+
+            assertThat(calendarPopupInteractor.onClockClicked()).isTrue()
+        }
+
+    @Test
+    fun onClockClicked_disabled_leavesTheClickToOthers() =
+        kosmos.runTest {
+            setCalendarEnabled(false)
+
+            assertThat(calendarPopupInteractor.onClockClicked()).isFalse()
+        }
+
     private fun setCalendarEnabled(enabled: Boolean) {
         context.orCreateTestableResources.addOverride(
             R.bool.config_statusBarClockOpensCalendar,

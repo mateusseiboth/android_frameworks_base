@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -85,6 +87,8 @@ import com.android.systemui.statusbar.phone.ui.StatusBarIconController
 import com.android.systemui.statusbar.phone.ui.TintedIconManager
 import com.android.systemui.statusbar.pipeline.battery.ui.composable.UnifiedBattery
 import com.android.systemui.statusbar.pipeline.battery.ui.viewmodel.BatteryViewModel
+import com.android.systemui.statusbar.pipeline.shared.ui.model.StartNotificationIcon
+import com.android.systemui.statusbar.pipeline.shared.ui.model.StartNotificationIconsModel
 import com.android.systemui.statusbar.pipeline.shared.ui.viewmodel.HomeStatusBarViewModel
 import com.android.systemui.statusbar.quickactions.popups.StatusBarPopupChips
 import com.android.systemui.statusbar.quickactions.ui.compose.QuickActionChipsContainer
@@ -167,6 +171,13 @@ fun DesktopStatusBar(
                 )
             }
         }
+        if (viewModel.isNotificationsChipAtStart) {
+            StartNotificationsChip(
+                viewModel = viewModel,
+                modifier =
+                    Modifier.padding(start = DesktopStatusBar.Dimensions.ChipInternalSpacing),
+            )
+        }
         Spacer(modifier = Modifier.weight(1f).clickable(onClick = viewModel::onSpacerClicked))
 
         Row(
@@ -200,7 +211,9 @@ fun DesktopStatusBar(
             // TODO(b/489444201): Remove this wrapper and `spacedBy` above once all the elements in
             //  this row have expanded touch targets.
             Row {
-                NotificationsChip(viewModel = viewModel)
+                if (!viewModel.isNotificationsChipAtStart) {
+                    NotificationsChip(viewModel = viewModel)
+                }
 
                 QuickSettingsChip(
                     viewModel = viewModel,
@@ -296,6 +309,119 @@ private fun NotificationsChip(viewModel: HomeStatusBarViewModel, modifier: Modif
             }
         }
     }
+}
+
+/**
+ * The notifications chip next to the clock: the icons of the notifying apps, and how many more
+ * there are, or a bell when there are none. A click opens the notifications shade.
+ */
+@Composable
+private fun StartNotificationsChip(
+    viewModel: HomeStatusBarViewModel,
+    modifier: Modifier = Modifier,
+) {
+    val chipHighlightModel =
+        if (viewModel.isNotificationsChipHighlighted) {
+            ChipHighlightModel.Strong
+        } else {
+            ChipHighlightModel.Transparent
+        }
+
+    WithAdaptiveTint(
+        highlightModel = chipHighlightModel,
+        isDarkProvider = { bounds -> viewModel.areaDark.isDarkTheme(bounds) },
+    ) { tint ->
+        val (hoverColor, rippleColor) =
+            when (chipHighlightModel) {
+                is ChipHighlightModel.Transparent ->
+                    tint.copy(alpha = ChipHighlightModel.Companion.Alpha.TRANSPARENT_HOVER) to
+                        tint.copy(alpha = ChipHighlightModel.Companion.Alpha.TRANSPARENT_RIPPLE)
+                else -> chipHighlightModel.hoverBackgroundColor to chipHighlightModel.rippleColor
+            }
+        val contentDescription = stringResource(R.string.accessibility_notification_bell)
+        val notificationIcons = viewModel.startNotificationIcons
+
+        ShadeHighlightChip(
+            modifier =
+                modifier
+                    .height(DesktopStatusBar.Dimensions.ChipHeight)
+                    .widthIn(min = DesktopStatusBar.Dimensions.ChipHeight)
+                    .semantics { this.contentDescription = contentDescription }
+                    .sysuiResTag("startNotificationIcons"),
+            onClick = viewModel::onNotificationIconChipClicked,
+            backgroundColor = chipHighlightModel.backgroundColor,
+            hoverBackgroundColor = hoverColor,
+            rippleColor = rippleColor,
+            horizontalArrangement =
+                Arrangement.spacedBy(
+                    DesktopStatusBar.Dimensions.ChipInternalSpacing,
+                    Alignment.CenterHorizontally,
+                ),
+            isClickable = viewModel.isNotificationsChipClickable,
+        ) {
+            if (notificationIcons.hasIcons) {
+                NotificationAppIcons(notificationIcons = notificationIcons, tint = tint)
+            } else {
+                StatusBarIcon(
+                    icon =
+                        Icon.Resource(
+                            resId = R.drawable.ic_notification_bell,
+                            contentDescription = null,
+                        ),
+                    tint = tint,
+                    modifier = Modifier.align(Alignment.CenterVertically),
+                )
+            }
+        }
+    }
+}
+
+/** The icons of the first notifications, then "+N" for the rest. */
+@Composable
+private fun RowScope.NotificationAppIcons(
+    notificationIcons: StartNotificationIconsModel,
+    tint: Color,
+) {
+    notificationIcons.icons.forEach { notificationIcon ->
+        key(notificationIcon.notifKey) {
+            NotificationAppIcon(
+                notificationIcon = notificationIcon,
+                tint = tint,
+                modifier = Modifier.align(Alignment.CenterVertically),
+            )
+        }
+    }
+    if (notificationIcons.overflowCount > 0) {
+        Text(
+            text =
+                stringResource(
+                    R.string.desktop_status_bar_more_notifications,
+                    notificationIcons.overflowCount,
+                ),
+            color = tint,
+            style = MaterialTheme.typography.labelLargeEmphasized,
+            modifier = Modifier.align(Alignment.CenterVertically),
+        )
+    }
+}
+
+/** The status bar icon of one notification, loaded as the user who got it. */
+@Composable
+private fun NotificationAppIcon(
+    notificationIcon: StartNotificationIcon,
+    tint: Color,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val drawable =
+        remember(notificationIcon, context) {
+            notificationIcon.icon.loadDrawableAsUser(context, notificationIcon.userId)
+        } ?: return
+    StatusBarIcon(
+        icon = Icon.Loaded(drawable = drawable, contentDescription = null),
+        tint = tint,
+        modifier = modifier,
+    )
 }
 
 @Composable

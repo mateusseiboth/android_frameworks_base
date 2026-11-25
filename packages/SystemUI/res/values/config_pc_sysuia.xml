@@ -31,4 +31,9 @@
     <!-- Whether the notification list scrolls when a notification at its bottom is expanded, so
          that the expanded notification stays in view. -->
     <bool name="config_scrollShadeOnBottomNotificationExpand">false</bool>
+
+    <!-- Whether the desktop status bar shows the notifications chip next to the clock, with the
+         icons of the notifying apps, instead of a bell at the end next to quick settings. A click
+         on it opens the notifications shade. -->
+    <bool name="config_desktopStatusBarNotificationsAtStart">false</bool>
 </resources>

@@ -1529,6 +1529,90 @@ class HomeStatusBarViewModelImplTest(flags: FlagsParameterization) : SysuiTestCa
         }
 
     @Test
+    fun isNotificationsChipAtStart_configOff_false() =
+        kosmos.runTest {
+            overrideResource(R.bool.config_desktopStatusBarNotificationsAtStart, false)
+
+            assertThat(underTest.isNotificationsChipAtStart).isFalse()
+        }
+
+    @Test
+    fun isNotificationsChipAtStart_configOn_true() =
+        kosmos.runTest {
+            overrideResource(R.bool.config_desktopStatusBarNotificationsAtStart, true)
+
+            assertThat(underTest.isNotificationsChipAtStart).isTrue()
+        }
+
+    @Test
+    @EnableFlags(FLAG_SCENE_CONTAINER, StatusBarForDesktop.FLAG_NAME, FLAG_DUAL_SHADE)
+    fun onClockClicked_notificationsAtStartWithoutCalendar_opensNotificationsShade() =
+        kosmos.runTest {
+            overrideResource(R.bool.config_desktopStatusBarNotificationsAtStart, true)
+            overrideResource(R.bool.config_statusBarClockOpensCalendar, false)
+            enableDualShade()
+            val currentOverlays by collectLastValue(sceneInteractor.currentOverlays)
+
+            underTest.onClockClicked()
+
+            assertThat(currentOverlays).contains(Overlays.NotificationsShade)
+        }
+
+    @Test
+    @EnableFlags(FLAG_SCENE_CONTAINER, StatusBarForDesktop.FLAG_NAME, FLAG_DUAL_SHADE)
+    fun onClockClicked_notificationsAtEnd_leavesNotificationsShadeClosed() =
+        kosmos.runTest {
+            overrideResource(R.bool.config_desktopStatusBarNotificationsAtStart, false)
+            overrideResource(R.bool.config_statusBarClockOpensCalendar, false)
+            enableDualShade()
+            val currentOverlays by collectLastValue(sceneInteractor.currentOverlays)
+
+            underTest.onClockClicked()
+
+            assertThat(currentOverlays).doesNotContain(Overlays.NotificationsShade)
+        }
+
+    @Test
+    @EnableFlags(FLAG_SCENE_CONTAINER, StatusBarForDesktop.FLAG_NAME, FLAG_DUAL_SHADE)
+    fun onClockClicked_calendarEnabled_opensCalendarInsteadOfNotifications() =
+        kosmos.runTest {
+            overrideResource(R.bool.config_desktopStatusBarNotificationsAtStart, true)
+            overrideResource(R.bool.config_statusBarClockOpensCalendar, true)
+            enableDualShade()
+            val currentOverlays by collectLastValue(sceneInteractor.currentOverlays)
+
+            underTest.onClockClicked()
+
+            assertThat(currentOverlays).doesNotContain(Overlays.NotificationsShade)
+        }
+
+    @Test
+    fun startNotificationIcons_showsTheIconsOfStatusBarNotifications() =
+        kosmos.runTest {
+            assertThat(underTest.startNotificationIcons.icons).isEmpty()
+
+            activeNotificationListRepository.activeNotifications.value =
+                ActiveNotificationsStore.Builder()
+                    .apply {
+                        addIndividualNotif(
+                            activeNotificationModel(
+                                key = "mail",
+                                groupKey = "mail",
+                                statusBarIcon =
+                                    android.graphics.drawable.Icon.createWithResource(
+                                        testableContext,
+                                        R.drawable.ic_notification_bell,
+                                    ),
+                            )
+                        )
+                    }
+                    .build()
+
+            assertThat(underTest.startNotificationIcons.icons).hasSize(1)
+            assertThat(underTest.startNotificationIcons.overflowCount).isEqualTo(0)
+        }
+
+    @Test
     fun hasStatusBarNotifications_ifNotificationsExist_isTrue() =
         kosmos.runTest {
             assertThat(underTest.hasStatusBarNotifications).isFalse()
