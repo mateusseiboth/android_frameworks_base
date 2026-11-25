@@ -57,6 +57,8 @@ import com.android.systemui.shade.domain.interactor.shadeInteractor
 import com.android.systemui.shade.ui.viewmodel.notificationsShadeOverlayContentViewModel
 import com.android.systemui.statusbar.core.StatusBarForDesktop
 import com.android.systemui.statusbar.disableflags.data.repository.fakeDisableFlagsRepository
+import com.android.systemui.statusbar.notification.data.repository.activeNotificationListRepository
+import com.android.systemui.statusbar.notification.data.repository.setActiveNotifs
 import com.android.systemui.statusbar.policy.configurationController
 import com.android.systemui.testKosmos
 import com.android.systemui.window.data.repository.fakeWindowRootViewBlurRepository
@@ -200,6 +202,43 @@ class NotificationsShadeOverlayContentViewModelTest : SysuiTestCase() {
             mediaPipelineRepository.clearCurrentUserMedia()
 
             assertThat(underTest.showMedia).isFalse()
+        }
+
+    @Test
+    fun isEmptyShadeVisible_configOn_noNotificationsNoMedia_true() =
+        kosmos.runTest {
+            overrideResource(R.bool.config_composeEmptyNotificationShade, true)
+            activeNotificationListRepository.setActiveNotifs(count = 0)
+
+            assertThat(underTest.isEmptyShadeVisible).isTrue()
+        }
+
+    @Test
+    fun isEmptyShadeVisible_configOn_withNotifications_false() =
+        kosmos.runTest {
+            overrideResource(R.bool.config_composeEmptyNotificationShade, true)
+            activeNotificationListRepository.setActiveNotifs(count = 2)
+
+            assertThat(underTest.isEmptyShadeVisible).isFalse()
+        }
+
+    @Test
+    fun isEmptyShadeVisible_configOn_withMedia_false() =
+        kosmos.runTest {
+            overrideResource(R.bool.config_composeEmptyNotificationShade, true)
+            activeNotificationListRepository.setActiveNotifs(count = 0)
+            mediaPipelineRepository.addCurrentUserMediaEntry(MediaData(active = true))
+
+            assertThat(underTest.isEmptyShadeVisible).isFalse()
+        }
+
+    @Test
+    fun isEmptyShadeVisible_configOff_false() =
+        kosmos.runTest {
+            overrideResource(R.bool.config_composeEmptyNotificationShade, false)
+            activeNotificationListRepository.setActiveNotifs(count = 0)
+
+            assertThat(underTest.isEmptyShadeVisible).isFalse()
         }
 
     @Test

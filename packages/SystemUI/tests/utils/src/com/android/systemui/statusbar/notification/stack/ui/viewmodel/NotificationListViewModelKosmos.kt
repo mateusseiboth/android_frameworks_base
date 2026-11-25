@@ -16,6 +16,7 @@
 
 package com.android.systemui.statusbar.notification.stack.ui.viewmodel
 
+import android.content.res.mainResources
 import com.android.systemui.dump.dumpManager
 import com.android.systemui.kosmos.Kosmos
 import com.android.systemui.kosmos.Kosmos.Fixture
@@ -55,5 +56,6 @@ val Kosmos.notificationListViewModel by Fixture {
         userSetupInteractor = userSetupInteractor,
         bgDispatcher = testDispatcher,
         dumpManager = dumpManager,
+        resources = mainResources,
     )
 }

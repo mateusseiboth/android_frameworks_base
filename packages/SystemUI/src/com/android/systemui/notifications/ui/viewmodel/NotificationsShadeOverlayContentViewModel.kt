@@ -43,6 +43,8 @@ import com.android.systemui.shade.domain.interactor.ShadeStatusBarComponentsInte
 import com.android.systemui.shade.shared.model.ShadeMode
 import com.android.systemui.shade.ui.viewmodel.ShadeHeaderViewModel
 import com.android.systemui.statusbar.core.StatusBarForDesktop
+import com.android.systemui.statusbar.notification.domain.interactor.ActiveNotificationsInteractor
+import com.android.systemui.statusbar.notification.emptyshade.ui.viewmodel.EmptyShadeViewModel
 import com.android.systemui.statusbar.notification.stack.ui.viewmodel.NotificationsPlaceholderViewModel
 import com.android.systemui.statusbar.ui.SystemBarUtilsState
 import com.android.systemui.utils.coroutines.flow.flatMapLatestConflated
@@ -82,6 +84,8 @@ constructor(
     private val blurConfig: BlurConfig,
     private val windowRootViewBlurInteractor: WindowRootViewBlurInteractor,
     shadeStatusBarComponentsInteractor: ShadeStatusBarComponentsInteractor,
+    activeNotificationsInteractor: ActiveNotificationsInteractor,
+    val emptyShadeViewModelFactory: EmptyShadeViewModel.Factory,
 ) : HydratedActivatable() {
 
     /**
@@ -114,6 +118,22 @@ constructor(
                     shadeStatusBarComponentsInteractor.disableFlags.value
                         .isQuickSettingsEnabled() && mediaCarouselInteractor.hasActiveMedia.value
             )
+
+    private val hasNotifications: Boolean by
+        activeNotificationsInteractor.areAnyNotificationsPresent.hydratedStateOf(
+            traceName = "hasNotifications",
+            initialValue = false,
+        )
+
+    /**
+     * Whether the overlay shows its own empty state: config_composeEmptyNotificationShade is set
+     * and there are neither notifications nor media to show.
+     */
+    val isEmptyShadeVisible: Boolean
+        get() =
+            resources.getBoolean(R.bool.config_composeEmptyNotificationShade) &&
+                !hasNotifications &&
+                !showMedia
 
     /**
      * Whether the shade container transparency effect should be enabled (`true`), or whether to

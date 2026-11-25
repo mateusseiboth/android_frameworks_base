@@ -17,13 +17,16 @@
 package com.android.systemui.statusbar.notification.stack.ui.viewmodel
 
 import android.annotation.SuppressLint
+import android.content.res.Resources
 import android.graphics.RectF
 import com.android.systemui.dagger.qualifiers.Background
 import com.android.systemui.dump.DumpManager
 import com.android.systemui.media.controls.domain.pipeline.interactor.MediaCarouselInteractor
+import com.android.systemui.res.R
 import com.android.systemui.scene.domain.interactor.SceneInteractor
 import com.android.systemui.scene.shared.flag.SceneContainerFlag
 import com.android.systemui.scene.shared.model.Overlays
+import com.android.systemui.shade.ShadeDisplayAware
 import com.android.systemui.shade.domain.interactor.ShadeInteractor
 import com.android.systemui.shade.domain.interactor.ShadeModeInteractor
 import com.android.systemui.shade.domain.interactor.ShadeStatusBarComponentsInteractor
@@ -82,6 +85,7 @@ constructor(
     userSetupInteractor: UserSetupInteractor,
     @Background bgDispatcher: CoroutineDispatcher,
     dumpManager: DumpManager,
+    @ShadeDisplayAware private val resources: Resources,
 ) : FlowDumperImpl(dumpManager) {
     /**
      * We want the NSSL to be unimportant for accessibility when there are no notifications in it
@@ -127,6 +131,9 @@ constructor(
                     // In Dual Shade, media is treated as a notification. Only show the empty shade
                     // view when both notifications and media are absent.
                     hasMedia && dualShade -> VisibilityChange.DISAPPEAR_WITH_ANIMATION
+                    // The notifications shade overlay draws its own empty state.
+                    dualShade && isEmptyShadeComposed() ->
+                        VisibilityChange.DISAPPEAR_WITHOUT_ANIMATION
                     // Hide the empty shade when QS is close to being full screen (in single shade).
                     // We use this instead of isQsFullscreen to avoid some flickering.
                     qsExpandedEnough && singleShade -> VisibilityChange.DISAPPEAR_WITHOUT_ANIMATION
@@ -161,6 +168,9 @@ constructor(
             .dumpWhileCollecting("shouldShowEmptyShadeViewAnimated")
             .flowOn(bgDispatcher)
     }
+
+    private fun isEmptyShadeComposed(): Boolean =
+        resources.getBoolean(R.bool.config_composeEmptyNotificationShade)
 
     /**
      * Whether the footer should not be visible for the user, even if it's present in the list (as

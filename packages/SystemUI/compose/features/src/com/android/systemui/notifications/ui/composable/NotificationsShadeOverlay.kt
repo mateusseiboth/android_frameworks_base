@@ -216,6 +216,12 @@ constructor(
                                 )
                             }
                         }
+                        if (viewModel.isEmptyShadeVisible) {
+                            EmptyNotificationShade(
+                                viewModelFactory = viewModel.emptyShadeViewModelFactory,
+                                modifier = modifier.padding(horizontal = notificationStackPadding),
+                            )
+                        }
                     },
                     shouldDrawScrimBackground = false,
                     modifier =

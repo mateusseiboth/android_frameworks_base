@@ -39,6 +39,7 @@ import com.android.systemui.media.controls.shared.model.MediaData
 import com.android.systemui.media.remedia.data.repository.mediaPipelineRepository
 import com.android.systemui.power.data.repository.fakePowerRepository
 import com.android.systemui.power.shared.model.WakefulnessState
+import com.android.systemui.res.R
 import com.android.systemui.scene.data.repository.sceneContainerRepository
 import com.android.systemui.scene.shared.flag.SceneContainerFlag
 import com.android.systemui.scene.shared.model.Scenes
@@ -212,6 +213,27 @@ class NotificationListViewModelTest(flags: FlagsParameterization) : SysuiTestCas
             // THEN empty shade is visible
             assertThat(hasActiveMedia).isFalse()
             assertThat(shouldShowEmptyShadeView).isTrue()
+        }
+
+    @Test
+    @EnableFlags(FLAG_SCENE_CONTAINER, FLAG_DUAL_SHADE)
+    fun shouldShowEmptyShadeView_dualShade_composedEmptyShade_false() =
+        kosmos.runTest {
+            overrideResource(R.bool.config_composeEmptyNotificationShade, true)
+            enableDualShade()
+            runCurrent()
+
+            val shouldShowEmptyShadeView by
+                collectLastValue(underTest.shouldShowEmptyShadeView.map { it.value })
+
+            // WHEN has no notifs
+            activeNotificationListRepository.setActiveNotifs(count = 0)
+            // AND shade is open
+            shadeTestUtil.setShadeExpansion(1f)
+            runCurrent()
+
+            // THEN the stack leaves the empty state to the notifications shade overlay
+            assertThat(shouldShowEmptyShadeView).isFalse()
         }
 
     @Test

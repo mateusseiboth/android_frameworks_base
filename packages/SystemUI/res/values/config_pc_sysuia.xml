@@ -36,4 +36,8 @@
          icons of the notifying apps, instead of a bell at the end next to quick settings. A click
          on it opens the notifications shade. -->
     <bool name="config_desktopStatusBarNotificationsAtStart">false</bool>
+
+    <!-- Whether the notifications shade overlay draws its own empty state ("You're all caught
+         up") instead of leaving it to the notification stack, in the dual shade. -->
+    <bool name="config_composeEmptyNotificationShade">false</bool>
 </resources>
