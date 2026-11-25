@@ -862,6 +862,12 @@ constructor(
 
     private fun updateDragResizeListenerIfNeeded(prevContainerSurface: SurfaceControl?) {
         val taskPositionChanged = !taskInfo.positionInParent.equals(taskPositionInParent)
+        // Without a decoration surface (no caption, or one the status bar hover hides) there is no
+        // edge to drag: the listener needs the surface.
+        if (decorationContainerSurface == null) {
+            closeDragResizeListener()
+            return
+        }
         if (!taskInfo.isDragResizable(inFullImmersive)) {
             closeDragResizeListener()
             if (taskPositionChanged) {

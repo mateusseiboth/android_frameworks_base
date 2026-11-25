@@ -322,6 +322,20 @@ class DefaultWindowDecorationTests : ShellTestCase() {
         return wrappedDecoration.defaultWindowDecoration
     }
 
+    // A task can be drag resizable while it has no decoration surface (its header hidden, as the
+    // status bar hover reveal does): relayout then has no drag resize listener to update.
+    @Test
+    @EnableFlags(Flags.FLAG_ENABLE_ADD_WINDOW_DECORATION_TO_ALL_TASKS)
+    fun relayout_headerHiddenByStatusBarHover_withoutDecorationSurface_doesNotThrow() {
+        insetsState.addInsetsSource(type = statusBars(), visible = false)
+        val task = createFullscreenTask()
+        val decoration =
+            setUpWindowDecoration(task, createDesktopFirstOrganizer(task.displayId))
+
+        decoration.onStatusBarHoverChanged(hoverX = 100_000f)
+        decoration.relayout(task, /* hasGlobalFocus= */ true, Region())
+    }
+
     @Test
     fun cornerRadius_maximizedTask_isSquare() {
         val task = WindowDecorationTestHelper.createAppHeaderTask(bounds = Rect(STABLE_BOUNDS))
