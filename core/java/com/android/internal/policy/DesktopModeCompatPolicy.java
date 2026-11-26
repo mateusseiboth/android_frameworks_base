@@ -35,6 +35,7 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.os.UserHandle;
 import android.provider.Settings;
 
 import com.android.internal.R;
@@ -48,6 +49,13 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 public class DesktopModeCompatPolicy {
+    /**
+     * Manifest property of an activity that draws its own caption (title bar): a freeform task of it
+     * gets resize edges and no app header.
+     */
+    public static final String PROPERTY_SELF_DECORATED =
+            "org.lineageos.desktop.PROPERTY_SELF_DECORATED";
+
     @NonNull
     private final Context mContext;
     @NonNull
@@ -57,6 +65,7 @@ public class DesktopModeCompatPolicy {
     @NonNull
     private final List<String> mConfigTransparentExemptionIgnoreList;
     private final Map<String, Boolean> mPackageInfoCache = new HashMap<>();
+    private final Map<ComponentName, Boolean> mSelfDecoratedCache = new HashMap<>();
     private PackageManager mPackageManager = null;
     @NonNull private final List<String> mConfigHomeFreeformActivities;
     @NonNull private final List<String> mConfigLaunchInFullscreenPackages;
@@ -243,6 +252,32 @@ public class DesktopModeCompatPolicy {
             );
         }
         return false;
+    }
+
+    /**
+     * Returns true if the task's top activity declares {@link #PROPERTY_SELF_DECORATED}. The answer
+     * is kept per component.
+     */
+    public boolean isTopActivitySelfDecorated(@NonNull TaskInfo task) {
+        final ComponentName activity =
+                task.topActivity != null ? task.topActivity : task.baseActivity;
+        if (activity == null) {
+            return false;
+        }
+        return mSelfDecoratedCache.computeIfAbsent(
+                activity, component -> readSelfDecorated(component, task.userId));
+    }
+
+    private boolean readSelfDecorated(@NonNull ComponentName activity, int userId) {
+        try {
+            return mContext.createContextAsUser(UserHandle.of(userId), /* flags= */ 0)
+                    .getPackageManager()
+                    .getProperty(PROPERTY_SELF_DECORATED, activity)
+                    .getBoolean();
+        } catch (PackageManager.NameNotFoundException e) {
+            // No such activity, or it does not declare the property.
+            return false;
+        }
     }
 
     /**

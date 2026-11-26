@@ -502,10 +502,15 @@ constructor(
             !DesktopExperienceFlags.ENABLE_ADD_WINDOW_DECORATION_TO_ALL_TASKS.isTrue ||
                 captionVisibilityHelper.shouldCreateCaption(taskInfo, isKeyguardVisibleAndOccluded)
         val isPinnedLayer = pinnedLayerController?.isPinned(taskInfo.taskId) ?: false
+        // The app draws its own caption: the task keeps its resize edges, borders and shadows, and
+        // gets no header, so its content starts at the top of the task bounds.
+        val isSelfDecorated =
+            taskInfo.isFreeform && desktopModeCompatPolicy.isTopActivitySelfDecorated(taskInfo)
         val captionType =
             when {
                 !shouldCreateCaption -> CaptionController.CaptionType.NO_CAPTION
                 isPinnedLayer -> CaptionController.CaptionType.APP_PINNED
+                isSelfDecorated -> CaptionController.CaptionType.NO_CAPTION
                 taskInfo.isFreeform -> CaptionController.CaptionType.APP_HEADER
                 isFullscreenDesktop(taskInfo, splitScreenController) ->
                     CaptionController.CaptionType.FULLSCREEN_HEADER
@@ -626,6 +631,10 @@ constructor(
 
         // Decoration container surface is needed if (1) caption should be attached to task or
         // (2) task is drag resizable, requiring a DragResizeInputListener
+        // A self-decorated task is framed like one with an app header.
+        val borderCaptionType =
+            if (isSelfDecorated) CaptionController.CaptionType.APP_HEADER else captionType
+
         val isDecorationSurfaceNeeded =
             if (DesktopExperienceFlags.ENABLE_ADD_WINDOW_DECORATION_TO_ALL_TASKS.isTrue) {
                 captionType != CaptionController.CaptionType.NO_CAPTION ||
@@ -641,11 +650,14 @@ constructor(
             isInsetSource = isInsetSource,
             insetSourceFlags = insetSourceFlags,
             displayExclusionRegion = Region.obtain(displayExclusionRegion),
-            shadowRadiusId = getShadowRadiusId(captionType, hasGlobalFocus),
+            shadowRadiusId = getShadowRadiusId(borderCaptionType, hasGlobalFocus),
             cornerRadiusId =
-                getCornerRadiusId(captionType, shouldIgnoreCornerRadius || isMaximized(taskInfo)),
-            borderSettingsId = getBorderSettingsId(captionType, taskInfo, hasGlobalFocus),
-            boxShadowSettingsIds = getShadowSettingsIds(captionType, hasGlobalFocus),
+                getCornerRadiusId(
+                    borderCaptionType,
+                    shouldIgnoreCornerRadius || isMaximized(taskInfo),
+                ),
+            borderSettingsId = getBorderSettingsId(borderCaptionType, taskInfo, hasGlobalFocus),
+            boxShadowSettingsIds = getShadowSettingsIds(borderCaptionType, hasGlobalFocus),
             isCaptionVisible = isCaptionVisible,
             windowDecorConfig = windowDecorConfig,
             asyncViewHost = asyncViewHost,
