@@ -57,6 +57,15 @@ import java.util.List;
 
 final class PackageAbiHelperImpl implements PackageAbiHelper {
 
+    /**
+     * ro.pm.ignore_32bit_abi_preference: a 64-bit primary ABI even for multiarch apps that ask for
+     * 32 bits (android:use32bitAbi, as the prebuilt WebView does). On x86 PCs, Chromium's sandbox
+     * for 32-bit renderers kills them on bionic's direct socket syscalls (shutdown), so WebView
+     * pages crashed when a video started; 32-bit apps still find the 32-bit libraries.
+     */
+    private static final boolean IGNORE_32BIT_ABI_PREFERENCE =
+            android.os.SystemProperties.getBoolean("ro.pm.ignore_32bit_abi_preference", false);
+
     @Nullable
     private static String[] sNativelySupported32BitAbis = null;
     @Nullable
@@ -454,7 +463,7 @@ final class PackageAbiHelperImpl implements PackageAbiHelper {
                 if (abi32 >= 0) {
                     final String abi = supported32BitAbis[abi32];
                     if (abi64 >= 0) {
-                        if (pkg.is32BitAbiPreferred()) {
+                        if (pkg.is32BitAbiPreferred() && !IGNORE_32BIT_ABI_PREFERENCE) {
                             secondaryCpuAbi = primaryCpuAbi;
                             primaryCpuAbi = abi;
                         } else {
