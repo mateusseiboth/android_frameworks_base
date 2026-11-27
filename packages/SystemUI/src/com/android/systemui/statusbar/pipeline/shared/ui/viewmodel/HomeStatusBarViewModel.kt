@@ -276,6 +276,10 @@ interface HomeStatusBarViewModel : Activatable {
     val startNotificationIcons: StartNotificationIconsModel
         get() = StartNotificationIconsModel.Empty
 
+    /** True while any notification is in the shade, silent ones included. */
+    val hasAnyNotifications: Boolean
+        get() = false
+
     /** True if the user can click on the notifications chip. */
     val isNotificationsChipClickable: Boolean
 
@@ -441,6 +445,9 @@ constructor(
 
     override val isNotificationsChipAtStart: Boolean
         get() = resources.getBoolean(R.bool.config_desktopStatusBarNotificationsAtStart)
+
+    override val hasAnyNotifications: Boolean by
+        notificationsInteractor.areAnyNotificationsPresent.hydratedStateOf(initialValue = false)
 
     override val startNotificationIcons: StartNotificationIconsModel by
         combine(

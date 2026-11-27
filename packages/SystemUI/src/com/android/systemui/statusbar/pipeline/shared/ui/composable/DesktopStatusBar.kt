@@ -293,40 +293,49 @@ private fun NotificationsChip(viewModel: HomeStatusBarViewModel, modifier: Modif
             includePadding = false,
             isClickable = viewModel.isNotificationsChipClickable,
         ) {
-            if (viewModel.hasStatusBarNotifications) {
-                Box(modifier = Modifier.align(Alignment.CenterVertically)) {
-                    StatusBarIcon(
-                        icon =
-                            Icon.Resource(
-                                resId = R.drawable.ic_notification_bell_unread_base,
-                                contentDescription = null,
-                            ),
-                        tint = tint,
-                    )
-                    StatusBarIcon(
-                        icon =
-                            Icon.Resource(
-                                resId = R.drawable.ic_notification_bell_unread_dot,
-                                contentDescription = null,
-                            ),
-                        tint =
-                            if (chipHighlightModel is ChipHighlightModel.Transparent)
-                                Color.Unspecified
-                            else tint,
-                    )
-                }
-            } else {
-                StatusBarIcon(
-                    icon =
-                        Icon.Resource(
-                            resId = R.drawable.ic_notification_bell,
-                            contentDescription = null,
-                        ),
-                    tint = tint,
-                    modifier = Modifier.align(Alignment.CenterVertically),
-                )
-            }
+            NotificationBell(
+                isMarked = viewModel.hasStatusBarNotifications,
+                tint = tint,
+                chipHighlightModel = chipHighlightModel,
+                modifier = Modifier.align(Alignment.CenterVertically),
+            )
         }
+    }
+}
+
+/** The bell, with the unread dot when [isMarked]. */
+@Composable
+private fun NotificationBell(
+    isMarked: Boolean,
+    tint: Color,
+    chipHighlightModel: ChipHighlightModel,
+    modifier: Modifier = Modifier,
+) {
+    if (!isMarked) {
+        StatusBarIcon(
+            icon = Icon.Resource(resId = R.drawable.ic_notification_bell, contentDescription = null),
+            tint = tint,
+            modifier = modifier,
+        )
+        return
+    }
+    Box(modifier = modifier) {
+        StatusBarIcon(
+            icon =
+                Icon.Resource(
+                    resId = R.drawable.ic_notification_bell_unread_base,
+                    contentDescription = null,
+                ),
+            tint = tint,
+        )
+        StatusBarIcon(
+            icon =
+                Icon.Resource(
+                    resId = R.drawable.ic_notification_bell_unread_dot,
+                    contentDescription = null,
+                ),
+            tint = if (chipHighlightModel is ChipHighlightModel.Transparent) Color.Unspecified else tint,
+        )
     }
 }
 
@@ -381,13 +390,11 @@ private fun StartNotificationsChip(
             if (notificationIcons.hasIcons) {
                 NotificationAppIcons(notificationIcons = notificationIcons, tint = tint)
             } else {
-                StatusBarIcon(
-                    icon =
-                        Icon.Resource(
-                            resId = R.drawable.ic_notification_bell,
-                            contentDescription = null,
-                        ),
+                // Silent notifications have no status bar icon: the bell gets its dot for them.
+                NotificationBell(
+                    isMarked = viewModel.hasAnyNotifications,
                     tint = tint,
+                    chipHighlightModel = chipHighlightModel,
                     modifier = Modifier.align(Alignment.CenterVertically),
                 )
             }
