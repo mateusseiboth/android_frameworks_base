@@ -18,7 +18,6 @@ package com.android.systemui.statusbar.pipeline.shared.ui.composable
 
 import android.app.ActivityManager
 import android.app.ActivityOptions
-import android.app.WindowConfiguration
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -46,6 +45,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -62,9 +62,8 @@ private object ClipboardHistory {
     const val PACKAGE = "org.lineageos.pcclipboard"
     val SERVICE = ComponentName(PACKAGE, "$PACKAGE.ClipboardHistoryService")
     val PANEL = ComponentName(PACKAGE, "$PACKAGE.PanelActivity")
-    const val PANEL_WIDTH_DP = 400
-    const val PANEL_HEIGHT_DP = 480
-    const val PANEL_MARGIN_DP = 8
+    const val EXTRA_ANCHOR_RIGHT = "anchor_right"
+    const val EXTRA_ANCHOR_BOTTOM = "anchor_bottom"
 }
 
 /**
@@ -109,9 +108,12 @@ fun ClipboardHistoryChip(areaDark: IsAreaDark, modifier: Modifier = Modifier) {
                 ),
             includePadding = false,
         ) {
+            // The size of the Wi-Fi and Ethernet icons next to it, not the smaller default of
+            // composable status bar icons.
             StatusBarIcon(
                 icon = Icon.Resource(resId = R.drawable.ic_clipboard_history, contentDescription = null),
                 tint = tint,
+                iconHeightDp = dimensionResource(R.dimen.status_bar_wifi_signal_size),
                 modifier = Modifier.align(Alignment.CenterVertically),
             )
         }
@@ -166,30 +168,18 @@ private fun KeepHistoryRunning(context: Context, userId: Int) {
 }
 
 /**
- * Opens the panel right under the status bar, its right edge on the chip's. On the desktop every task
- * is a freeform window placed by the window manager, which ignores the panel's own gravity, so the
- * window's bounds are given here.
+ * Opens the panel on this display, right under the status bar, its right edge on the button's. The panel
+ * places its own window from the two values (PcClipboard's PanelActivity).
  */
 private fun openPanel(context: Context, userId: Int, chipBounds: Rect) {
     val intent =
         Intent()
             .setComponent(ClipboardHistory.PANEL)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    val options = ActivityOptions.makeBasic().setLaunchDisplayId(context.displayId)
-    panelBounds(context, chipBounds)?.let { bounds ->
-        options.setLaunchWindowingMode(WindowConfiguration.WINDOWING_MODE_FREEFORM)
-        options.setLaunchBounds(bounds)
+    if (chipBounds != Rect.Zero) {
+        intent.putExtra(ClipboardHistory.EXTRA_ANCHOR_RIGHT, chipBounds.right.toInt())
+        intent.putExtra(ClipboardHistory.EXTRA_ANCHOR_BOTTOM, chipBounds.bottom.toInt())
     }
+    val options = ActivityOptions.makeBasic().setLaunchDisplayId(context.displayId)
     context.startActivityAsUser(intent, options.toBundle(), UserHandle.of(userId))
-}
-
-private fun panelBounds(context: Context, chipBounds: Rect): android.graphics.Rect? {
-    if (chipBounds == Rect.Zero) return null
-    val metrics = context.resources.displayMetrics
-    val width = (ClipboardHistory.PANEL_WIDTH_DP * metrics.density).toInt()
-    val height = (ClipboardHistory.PANEL_HEIGHT_DP * metrics.density).toInt()
-    val margin = (ClipboardHistory.PANEL_MARGIN_DP * metrics.density).toInt()
-    val right = minOf(chipBounds.right.toInt() + width / 4, metrics.widthPixels - margin)
-    val top = chipBounds.bottom.toInt() + margin
-    return android.graphics.Rect(maxOf(margin, right - width), top, right, top + height)
 }
