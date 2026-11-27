@@ -208,6 +208,8 @@ fun DesktopStatusBar(
                     NotificationsChip(viewModel = viewModel)
                 }
 
+                ClipboardHistoryChip(areaDark = viewModel.areaDark)
+
                 QuickSettingsChip(
                     viewModel = viewModel,
                     statusBarIconController = statusBarIconController,

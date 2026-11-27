@@ -5075,5 +5075,7 @@
     <!-- Desktop status bar calendar popup: date of an all day event, e.g. "Mon, Nov 24, All day". [CHAR LIMIT=NONE] -->
     <string name="status_bar_calendar_all_day_event"><xliff:g id="date" example="Mon, Nov 24">%1$s</xliff:g>, All day</string>
     <!-- Desktop status bar notifications chip: count of the notifications whose icons do not fit, e.g. "+3". -->
+    <!-- Content description of the desktop status bar's clipboard history button. [CHAR LIMIT=40] -->
+    <string name="accessibility_clipboard_history">Clipboard history</string>
     <string name="desktop_status_bar_more_notifications" translatable="false">+<xliff:g id="count" example="3">%1$d</xliff:g></string>
 </resources>

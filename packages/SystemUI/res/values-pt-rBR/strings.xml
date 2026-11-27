@@ -1898,4 +1898,5 @@
     <string name="status_bar_calendar_untitled_event">(Sem título)</string>
     <string name="global_action_switch_user">Trocar de usuário</string>
     <string name="status_bar_calendar_all_day_event"><xliff:g id="date" example="seg., 24 de nov.">%1$s</xliff:g>, dia inteiro</string>
+    <string name="accessibility_clipboard_history">Histórico da área de transferência</string>
 </resources>
