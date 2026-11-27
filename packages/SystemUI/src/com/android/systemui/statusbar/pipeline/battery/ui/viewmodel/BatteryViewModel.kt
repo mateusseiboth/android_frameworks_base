@@ -57,6 +57,10 @@ sealed class BatteryViewModel(
 
     val isFull by interactor.isFull.hydratedStateOf(initialValue = false)
 
+    /** False on a PC without a battery (the health HAL reports none present). */
+    val isBatteryPresent: Boolean by
+        interactor.isStateUnknown.map { !it }.hydratedStateOf(initialValue = true)
+
     val isCharging: Boolean by interactor.isCharging.hydratedStateOf(initialValue = false)
 
     val isBatteryPercentSettingEnabled: Boolean by

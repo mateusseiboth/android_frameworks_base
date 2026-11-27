@@ -544,14 +544,18 @@ private fun QuickSettingsChip(
                     ChipHighlightModel.Transparent -> viewModel.areaDark
                     ChipHighlightModel.Weak -> viewModel.areaDark
                 }
-            UnifiedBattery(
-                viewModel =
-                    rememberViewModel("DesktopStatusBar.BatteryViewModel") {
-                        viewModel.unifiedBatteryViewModel.create()
-                    },
-                isDarkProvider = { batteryDarkProvider },
-                modifier = Modifier.height(batteryHeight),
-            )
+            val batteryViewModel =
+                rememberViewModel("DesktopStatusBar.BatteryViewModel") {
+                    viewModel.unifiedBatteryViewModel.create()
+                }
+            // A desktop PC has no battery: no icon instead of an empty one with a question mark.
+            if (batteryViewModel.isBatteryPresent) {
+                UnifiedBattery(
+                    viewModel = batteryViewModel,
+                    isDarkProvider = { batteryDarkProvider },
+                    modifier = Modifier.height(batteryHeight),
+                )
+            }
         }
     }
 }
