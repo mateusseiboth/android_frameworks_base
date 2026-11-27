@@ -18,6 +18,7 @@ package com.android.systemui.statusbar.pipeline.shared.ui.composable
 
 import android.app.ActivityManager
 import android.app.ActivityOptions
+import android.app.WindowConfiguration
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -27,15 +28,22 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import android.os.UserHandle
 import android.os.UserManager
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -54,6 +62,9 @@ private object ClipboardHistory {
     const val PACKAGE = "org.lineageos.pcclipboard"
     val SERVICE = ComponentName(PACKAGE, "$PACKAGE.ClipboardHistoryService")
     val PANEL = ComponentName(PACKAGE, "$PACKAGE.PanelActivity")
+    const val PANEL_WIDTH_DP = 400
+    const val PANEL_HEIGHT_DP = 480
+    const val PANEL_MARGIN_DP = 8
 }
 
 /**
@@ -67,6 +78,7 @@ fun ClipboardHistoryChip(areaDark: IsAreaDark, modifier: Modifier = Modifier) {
     val userId = rememberCurrentUser(context)
     if (!isHistoryAvailable(context, userId)) return
     KeepHistoryRunning(context, userId)
+    var chipBounds by remember { mutableStateOf(Rect.Zero) }
 
     WithAdaptiveTint(
         highlightModel = ChipHighlightModel.Transparent,
@@ -80,9 +92,22 @@ fun ClipboardHistoryChip(areaDark: IsAreaDark, modifier: Modifier = Modifier) {
                     .widthIn(min = DesktopStatusBar.Dimensions.ChipHeight)
                     .semantics { contentDescription = description }
                     .sysuiResTag("clipboardHistory"),
-            onClick = { openPanel(context, userId) },
+            onClick = { openPanel(context, userId, chipBounds) },
+            // Like the notifications chip: the touch target fills the bar's height, so the icon
+            // sits on the same line as the status icons, and the spacing to its neighbours is
+            // split between their touch targets.
+            clickTargetModifier =
+                Modifier.fillMaxHeight()
+                    .padding(horizontal = DesktopStatusBar.Dimensions.ElementSpacing / 2)
+                    .onGloballyPositioned { chipBounds = it.boundsInWindow() },
             hoverBackgroundColor = tint.copy(alpha = ChipHighlightModel.Companion.Alpha.TRANSPARENT_HOVER),
             rippleColor = tint.copy(alpha = ChipHighlightModel.Companion.Alpha.TRANSPARENT_RIPPLE),
+            horizontalArrangement =
+                Arrangement.spacedBy(
+                    DesktopStatusBar.Dimensions.ChipInternalSpacing,
+                    Alignment.CenterHorizontally,
+                ),
+            includePadding = false,
         ) {
             StatusBarIcon(
                 icon = Icon.Resource(resId = R.drawable.ic_clipboard_history, contentDescription = null),
@@ -140,11 +165,31 @@ private fun KeepHistoryRunning(context: Context, userId: Int) {
     }
 }
 
-private fun openPanel(context: Context, userId: Int) {
+/**
+ * Opens the panel right under the status bar, its right edge on the chip's. On the desktop every task
+ * is a freeform window placed by the window manager, which ignores the panel's own gravity, so the
+ * window's bounds are given here.
+ */
+private fun openPanel(context: Context, userId: Int, chipBounds: Rect) {
     val intent =
         Intent()
             .setComponent(ClipboardHistory.PANEL)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     val options = ActivityOptions.makeBasic().setLaunchDisplayId(context.displayId)
+    panelBounds(context, chipBounds)?.let { bounds ->
+        options.setLaunchWindowingMode(WindowConfiguration.WINDOWING_MODE_FREEFORM)
+        options.setLaunchBounds(bounds)
+    }
     context.startActivityAsUser(intent, options.toBundle(), UserHandle.of(userId))
+}
+
+private fun panelBounds(context: Context, chipBounds: Rect): android.graphics.Rect? {
+    if (chipBounds == Rect.Zero) return null
+    val metrics = context.resources.displayMetrics
+    val width = (ClipboardHistory.PANEL_WIDTH_DP * metrics.density).toInt()
+    val height = (ClipboardHistory.PANEL_HEIGHT_DP * metrics.density).toInt()
+    val margin = (ClipboardHistory.PANEL_MARGIN_DP * metrics.density).toInt()
+    val right = minOf(chipBounds.right.toInt() + width / 4, metrics.widthPixels - margin)
+    val top = chipBounds.bottom.toInt() + margin
+    return android.graphics.Rect(maxOf(margin, right - width), top, right, top + height)
 }
