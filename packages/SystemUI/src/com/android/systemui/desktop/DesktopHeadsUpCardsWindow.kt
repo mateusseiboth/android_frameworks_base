@@ -24,6 +24,9 @@ import android.content.res.Resources
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.hardware.display.DisplayManager
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.Display
 import android.view.Gravity
@@ -85,6 +88,13 @@ constructor(
     private var host: Host? = null
     private val cards = LinkedHashMap<String, View>()
 
+    /** When each card leaves at the latest, whatever SystemUI's heads-up state says. */
+    private val deadlines = HashMap<String, Long>()
+    private val restartedKeys = HashSet<String>()
+    private val handler = Handler(Looper.getMainLooper())
+    private val timeoutMs by lazy { DesktopHeadsUpCards.fromResources(resources).timeoutMs.toLong() }
+    private val checkCards = Runnable { removeExpiredCards() }
+
     override fun start() {
         if (!DesktopHeadsUpCards.fromResources(resources).isEnabled) return
         headsUpManager.addListener(this)
@@ -96,6 +106,26 @@ constructor(
             .onFailure { Log.e(TAG, "card of ${entry.key}", it) }
     }
 
+    override fun onHeadsUpPinnedModeChanged(inPinnedMode: Boolean) {
+        if (!inPinnedMode) removeExpiredCards()
+    }
+
+    /**
+     * A card leaves once its heads-up is gone or at its deadline (the timeout, once restarted by
+     * the pointer): nothing keeps a card forever, even if a heads-up's end went unseen.
+     */
+    private fun removeExpiredCards() {
+        val now = SystemClock.uptimeMillis()
+        cards.keys
+            .filter { key -> now >= (deadlines[key] ?: 0L) || !headsUpManager.isHeadsUpEntry(key) }
+            .forEach { key ->
+                Log.i(TAG, "card $key expired")
+                hideFromUser(key, "expired")
+            }
+        handler.removeCallbacks(checkCards)
+        if (cards.isNotEmpty()) handler.postDelayed(checkCards, CHECK_INTERVAL_MS)
+    }
+
     private fun showCard(entry: NotificationEntry) {
         hideCardNow(entry.key)
         // Over the lock screen the shade's own heads-up shows, with its privacy rules.
@@ -103,6 +133,10 @@ constructor(
         val host = obtainHost()
         val card = buildCard(host.stack.context, entry)
         cards[entry.key] = card
+        deadlines[entry.key] = SystemClock.uptimeMillis() + timeoutMs + ANIMATION_MS
+        restartedKeys.remove(entry.key)
+        handler.removeCallbacks(checkCards)
+        handler.postDelayed(checkCards, CHECK_INTERVAL_MS)
         host.stack.addView(card, 0, buildCardLayoutParams(host.stack.context))
         val slide = resources.displayMetrics.density * SLIDE_DP
         card.alpha = 0f
@@ -112,6 +146,7 @@ constructor(
     }
 
     private fun hideCard(key: String) {
+        deadlines.remove(key)
         val card = cards.remove(key) ?: return
         val slide = resources.displayMetrics.density * SLIDE_DP
         card.animate().alpha(0f).translationX(slide).setDuration(ANIMATION_MS).withEndAction {
@@ -122,6 +157,7 @@ constructor(
     }
 
     private fun hideCardNow(key: String) {
+        deadlines.remove(key)
         val card = cards.remove(key) ?: return
         (card.parent as? ViewGroup)?.removeView(card)
     }
@@ -269,6 +305,10 @@ constructor(
     private fun onCardHover(entry: NotificationEntry, close: View, event: MotionEvent) {
         if (event.actionMasked == MotionEvent.ACTION_HOVER_ENTER) {
             headsUpManager.setHeadsUpDismissTimerPaused(entry.key, true)
+            // The pointer gives the card its whole time again, only once.
+            if (restartedKeys.add(entry.key) && entry.key in deadlines) {
+                deadlines[entry.key] = SystemClock.uptimeMillis() + timeoutMs
+            }
         }
         close.isInvisible = event.actionMasked == MotionEvent.ACTION_HOVER_EXIT
     }
@@ -357,5 +397,6 @@ constructor(
         const val ELEVATION_DP = 8f
         const val CLOSE_SIZE_DP = 32f
         const val SWIPE_AWAY_FRACTION = 3
+        const val CHECK_INTERVAL_MS = 1000L
     }
 }
