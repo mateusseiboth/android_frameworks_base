@@ -135,7 +135,10 @@ constructor(
                 is MediaControlChipModel.Compose -> appIcon
             }
 
-        return ChipIcon(icon = defaultIcon)
+        return ChipIcon(
+            icon = defaultIcon,
+            isTinted = !(this is MediaControlChipModel.Legacy && isAppIconInColor),
+        )
     }
 
     @AssistedFactory

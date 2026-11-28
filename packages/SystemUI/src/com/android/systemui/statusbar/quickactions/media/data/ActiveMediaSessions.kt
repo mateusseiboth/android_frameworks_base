@@ -66,6 +66,7 @@ constructor(
     private val mutableCurrent = MutableStateFlow<Session?>(null)
     private var controllers: List<MediaController> = emptyList()
     private var isStarted = false
+    private val apps = HashMap<String, Pair<String, Icon?>>()
 
     /** The playing session (else a paused one with a title), or null. */
     val current: StateFlow<Session?> = mutableCurrent.asStateFlow()
@@ -146,10 +147,18 @@ constructor(
         )
     }
 
-    /** The app's label and icon, for the user who owns the session. */
+    /**
+     * The app's label and icon, for the user who owns the session (under HSUM the app may exist only
+     * for that user), read once per app: a new icon object on every playback update would make each
+     * update a new session.
+     */
     private fun readApp(controller: MediaController): Pair<String, Icon?> {
         val packageName = controller.packageName
         val user = controller.sessionToken.uid.let(UserHandle::getUserHandleForUid)
+        return apps.getOrPut("$packageName/${user.identifier}") { loadApp(packageName, user) }
+    }
+
+    private fun loadApp(packageName: String, user: UserHandle): Pair<String, Icon?> {
         return runCatching {
                 val packages = context.packageManager
                 val info =
@@ -158,8 +167,9 @@ constructor(
                         PackageManager.ApplicationInfoFlags.of(0),
                         user,
                     )
-                val icon = packages.getApplicationIcon(info).toBitmap()
-                packages.getApplicationLabel(info).toString() to Icon.createWithBitmap(icon)
+                val userPackages = context.createContextAsUser(user, 0).packageManager
+                val icon = userPackages.getApplicationIcon(info).toBitmap()
+                userPackages.getApplicationLabel(info).toString() to Icon.createWithBitmap(icon)
             }
             .getOrElse { packageName to null }
     }

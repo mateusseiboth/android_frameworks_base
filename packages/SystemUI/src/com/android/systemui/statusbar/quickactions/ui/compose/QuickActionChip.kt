@@ -342,11 +342,13 @@ private fun ChipIcons(
                             .padding(2.dp)
                     },
             tint =
-                colors.icon(
-                    isSelected = isSelected,
-                    isHighlighted = chipIcon.isHighlighted,
-                    colorScheme = MaterialTheme.colorScheme,
-                ),
+                colors
+                    .icon(
+                        isSelected = isSelected,
+                        isHighlighted = chipIcon.isHighlighted,
+                        colorScheme = MaterialTheme.colorScheme,
+                    )
+                    .takeIf { chipIcon.isTinted } ?: Color.Unspecified,
         )
     }
 }

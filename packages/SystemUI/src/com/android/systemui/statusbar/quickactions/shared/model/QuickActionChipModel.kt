@@ -54,6 +54,8 @@ data class ChipIcon(
     val icon: Icon,
     val onClick: (() -> Unit)? = null,
     val isHighlighted: Boolean = false,
+    /** False for an icon that keeps its own colors (a full color app icon). */
+    val isTinted: Boolean = true,
 )
 
 /** Content displayed to the right of the popup chip icons */

@@ -31,6 +31,8 @@ sealed interface MediaControlChipModel {
         override val appName: String?,
         override val songName: CharSequence?,
         override val playOrPause: MediaAction?,
+        /** The app's own full color icon (a media session's), drawn untinted. */
+        val isAppIconInColor: Boolean = false,
     ) : MediaControlChipModel
 
     data class Compose(

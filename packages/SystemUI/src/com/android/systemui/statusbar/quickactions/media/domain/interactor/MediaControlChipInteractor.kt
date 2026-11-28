@@ -60,6 +60,7 @@ constructor(
     private val activeMediaSessions: ActiveMediaSessions,
 ) {
     private val isEnabled = MutableStateFlow(false)
+    private var lastLoggedChip: String? = null
 
     private val mediaControlChipModelFromCards: Flow<MediaControlChipModel?> = snapshotFlow {
         mediaRepository.currentMedia.firstOrNull { it.isActive }?.toMediaControlChipModel()
@@ -92,6 +93,10 @@ constructor(
                 fromCards ?: fromPipeline ?: fromSessions
             }
             .onEach { model ->
+                // Only when what the chip shows changes, not on every playback update.
+                val shown = "${model?.appName} \"${model?.songName}\" ${model?.playOrPause?.contentDescription}"
+                if (shown == lastLoggedChip) return@onEach
+                lastLoggedChip = shown
                 Log.i(TAG, "chip: ${model?.appName} \"${model?.songName}\" " +
                     "(media ${mediaRepository.currentUserEntries.value.size}, " +
                     "cards ${mediaRepository.currentMedia.size}, " +
@@ -161,6 +166,7 @@ constructor(
             appName = appName,
             songName = title,
             playOrPause = playOrPause,
+            isAppIconInColor = appIcon != null,
         )
     }
 }
