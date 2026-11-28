@@ -19,6 +19,7 @@ package com.android.systemui.statusbar.notification.stack.ui.viewmodel
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import android.view.View
 import android.view.WindowInsets.Type.defaultVisible
 import androidx.annotation.VisibleForTesting
@@ -148,6 +149,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
@@ -296,20 +298,35 @@ constructor(
      * The stack's side: the shade's, except for the heads-up cards of a PC, which sit at the top end
      * while the notifications popup is closed (DesktopHeadsUpCards).
      */
-    private val stackHorizontalAlignment: Flow<Alignment.Horizontal> =
-        DesktopHeadsUpCards.fromResources(context.resources).let { cards ->
-            combine(
-                shadeModeInteractor.notificationStackHorizontalAlignment,
-                shadeInteractor.isShadeAnyExpanded,
-            ) { alignment, isShadeExpanded ->
-                cards.findStackAlignment(alignment, isShadeExpanded)
-            }
+    private val desktopHeadsUpCards = DesktopHeadsUpCards.fromResources(context.resources)
+
+    /** Whether the stack holds only the heads-up cards of a PC: the shade is closed. */
+    private val isDesktopCardsPlacement: Flow<Boolean> =
+        shadeInteractor.isShadeAnyExpanded.map { isShadeExpanded ->
+            desktopHeadsUpCards.isEnabled && !isShadeExpanded
+        }
+
+    /** The cards sit at the top end, as wide as the popup's cards, whatever the shade mode. */
+    private fun buildDesktopCardsDimensions(
+        dimensions: ConfigurationBasedDimensions
+    ): ConfigurationBasedDimensions =
+        with(context.resources) {
+            dimensions.copy(
+                horizontalPosition =
+                    HorizontalPosition.MiddleToEdge(getDimensionPixelSize(R.dimen.shade_panel_width)),
+                marginStart = 0,
+                marginEnd =
+                    getDimensionPixelSize(R.dimen.shade_panel_margin_horizontal)
+                        .coerceAtLeast(
+                            getDimensionPixelSize(R.dimen.desktop_heads_up_card_margin_top)
+                        ),
+            )
         }
 
     val configurationBasedDimensions: Flow<ConfigurationBasedDimensions> =
         if (SceneContainerFlag.isEnabled) {
                 combine(
-                    stackHorizontalAlignment,
+                    shadeModeInteractor.notificationStackHorizontalAlignment,
                     shadeModeInteractor.shadeMode,
                     shadeModeInteractor.isFullWidthShade,
                     configurationInteractor.onAnyConfigurationChange,
@@ -391,7 +408,19 @@ constructor(
                     )
                 }
             }
+            .combine(isDesktopCardsPlacement) { dimensions, isDesktopCards ->
+                buildDesktopCardsDimensions(dimensions).takeIf { isDesktopCards } ?: dimensions
+            }
             .distinctUntilChanged()
+            .onEach { dimensions ->
+                if (desktopHeadsUpCards.isEnabled) {
+                    Log.d(
+                        "DesktopHeadsUpCards",
+                        "container: $dimensions shadeMode=${shadeModeInteractor.shadeMode.value}" +
+                            " fullWidth=${shadeModeInteractor.isFullWidthShade.value}",
+                    )
+                }
+            }
             .dumpWhileCollecting("configurationBasedDimensions")
 
     private val isOnAnyBouncer: Flow<Boolean> =

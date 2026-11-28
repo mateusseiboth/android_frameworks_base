@@ -16,6 +16,7 @@
 
 package com.android.systemui.notifications.ui.composable
 
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -26,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -64,6 +66,8 @@ fun ContentScope.HeadsUpNotificationPlaceholder(
     viewModel: NotificationsPlaceholderViewModel,
     modifier: Modifier = Modifier,
 ) {
+    val isDesktopCards = booleanResource(R.bool.config_desktopHeadsUpCards)
+    val lastLoggedPlacement = remember { arrayOfNulls<String>(1) }
     Box(
         modifier =
             modifier
@@ -76,11 +80,17 @@ fun ContentScope.HeadsUpNotificationPlaceholder(
                     // which can scroll off screen while snoozing.
                     val rawBounds = coordinates.rawBoundsInWindow()
                     viewModel.setHeadsUpBounds(rawBounds)
+                    val placement = "$tag placeholder at $rawBounds size ${coordinates.size}"
+                    if (isDesktopCards && placement != lastLoggedPlacement[0]) {
+                        lastLoggedPlacement[0] = placement
+                        Log.d("DesktopHeadsUpCards", placement)
+                    }
                     debugLog(viewModel) {
                         "$tag.HUNS onPlaced:" + " size=${coordinates.size}" + " bounds=$rawBounds"
                     }
                 }
                 .onUnplaced {
+                    if (isDesktopCards) Log.d("DesktopHeadsUpCards", "$tag placeholder gone")
                     debugLog(viewModel) { "$tag.HUNS onUnplaced" }
                     viewModel.resetHeadsUpBounds()
                 }

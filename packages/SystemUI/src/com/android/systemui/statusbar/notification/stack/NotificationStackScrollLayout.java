@@ -567,6 +567,7 @@ public class NotificationStackScrollLayout
     private boolean mShouldUseNegativeRoundedRectClipping = false;
     /** Heads-ups as cards over a PC's screen (config_desktopHeadsUpCards). */
     private final boolean mDesktopHeadsUpCards;
+    private static final long DESKTOP_CARD_LOG_DELAY_MS = 1000;
 
     private int mRoundedRectClippingLeft;
     private int mRoundedRectClippingTop;
@@ -6006,6 +6007,8 @@ public class NotificationStackScrollLayout
         if (mDesktopHeadsUpCards && inHeadsUpPinnedMode) {
             // Where the stack of the heads-up cards of a PC is, for `logcat -s DesktopHeadsUpCards`.
             post(this::logDesktopCardsStack);
+            // Again once the heads-up has slid in.
+            postDelayed(this::logDesktopCardsStack, DESKTOP_CARD_LOG_DELAY_MS);
         }
     }
 
@@ -6019,7 +6022,23 @@ public class NotificationStackScrollLayout
                 + " negativeClip " + mShouldUseNegativeRoundedRectClipping
                 + " clippedByPanels " + isClippedByPanels()
                 + " expansion " + mAmbientState.getExpansionFraction()
-                + " qsExpansion " + mAmbientState.getQsExpansionFraction());
+                + " qsExpansion " + mAmbientState.getQsExpansionFraction()
+                + " headsUpTop " + mAmbientState.getHeadsUpTop()
+                + " headsUpBottom " + mHeadsUpAnimator.getHeadsUpAppearHeightBottom()
+                + " children " + getChildCount());
+        for (int i = 0; i < getChildCount(); i++) {
+            if (getChildAt(i) instanceof ExpandableNotificationRow row
+                    && (row.isHeadsUp() || row.isHeadsUpAnimatingAway())) {
+                int[] rowLocation = new int[2];
+                row.getLocationOnScreen(rowLocation);
+                Log.d("DesktopHeadsUpCards", "row " + row.getKey() + " at " + rowLocation[0] + ","
+                        + rowLocation[1] + " size " + row.getWidth() + "x" + row.getActualHeight()
+                        + " translationY " + row.getTranslationY() + " alpha " + row.getAlpha()
+                        + " visibility " + row.getVisibility() + " pinned " + row.isPinned()
+                        + " clipTop " + row.getClipTopAmount()
+                        + " clipBottom " + row.getClipBottomAmount());
+            }
+        }
     }
 
     /** TODO(b/328390331) make this private, when {@link SceneContainerFlag} is removed */

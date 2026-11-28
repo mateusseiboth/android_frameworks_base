@@ -75,6 +75,7 @@ public class StackScrollAlgorithm {
     private boolean mStackHeadsUpCards;
     private int mHeadsUpCardGap;
     private float mHeadsUpTopForLog;
+    private String mDesktopCardRowsSummary;
     private final java.util.Map<String, String> mDesktopCardPlacements = new java.util.HashMap<>();
     private static final int MAX_LOGGED_CARDS = 32;
     private boolean mClipNotificationScrollToTop;
@@ -1083,7 +1084,8 @@ public class StackScrollAlgorithm {
                         Math.max(childState.getYTranslation(), headsUpTranslation),
                         "StackScrollAlgorithm.updateHeadsUpStates.pinned");
                 childState.height = Math.max(row.getIntrinsicHeight(), childState.height);
-                if (mStackHeadsUpCards && !mIsExpanded) {
+                if (mStackHeadsUpCards
+                        && (!mIsExpanded || ambientState.getExpansionFraction() == 0f)) {
                     // Over the desktop each card has its own place, below the ones above it; the
                     // first one stays where any heads-up goes.
                     childState.setYTranslation(
@@ -1091,7 +1093,6 @@ public class StackScrollAlgorithm {
                             "StackScrollAlgorithm.updateHeadsUpStates.desktopCard");
                     nextCardTop = childState.getYTranslation() + row.getIntrinsicHeight()
                             + mHeadsUpCardGap;
-                    logDesktopCard(row, childState);
                 }
                 if (NotificationHeadsUpCycling.isEnabled()) {
                     if (isCyclingIn(row, ambientState)) {
@@ -1153,14 +1154,43 @@ public class StackScrollAlgorithm {
                 // keep it visible for the animation
                 childState.hidden = false;
             }
+            if (mStackHeadsUpCards) {
+                logDesktopCard(row, childState, ambientState);
+            }
+        }
+        if (mStackHeadsUpCards) {
+            logDesktopCardRows(algorithmState);
+        }
+    }
+
+    /** How many heads-up rows the stack lays out, logged when it changes (DesktopHeadsUpCards). */
+    private void logDesktopCardRows(StackScrollAlgorithmState algorithmState) {
+        int headsUps = 0;
+        for (View child : algorithmState.visibleChildren) {
+            if (child instanceof ExpandableNotificationRow row
+                    && (row.isHeadsUp() || row.isHeadsUpAnimatingAway())) {
+                headsUps++;
+            }
+        }
+        String summary = headsUps + " heads-up of " + algorithmState.visibleChildren.size()
+                + " visible rows, expanded=" + mIsExpanded;
+        if (!summary.equals(mDesktopCardRowsSummary)) {
+            mDesktopCardRowsSummary = summary;
+            android.util.Log.d("DesktopHeadsUpCards", "layout: " + summary);
         }
     }
 
     /** Where each heads-up card of a PC went, logged when it changes (DesktopHeadsUpCards tag). */
-    private void logDesktopCard(ExpandableNotificationRow row, ExpandableViewState state) {
+    private void logDesktopCard(ExpandableNotificationRow row, ExpandableViewState state,
+            AmbientState ambientState) {
         String placement = "y=" + state.getYTranslation() + " h=" + state.height
                 + " alpha=" + state.getAlpha() + " hidden=" + state.hidden
-                + " headsUpTop=" + mHeadsUpTopForLog;
+                + " headsUpIsVisible=" + state.headsUpIsVisible
+                + " pinned=" + row.isPinned() + " headsUp=" + row.isHeadsUp()
+                + " animatingAway=" + row.isHeadsUpAnimatingAway()
+                + " expanded=" + mIsExpanded + " expansion=" + ambientState.getExpansionFraction()
+                + " headsUpTop=" + mHeadsUpTopForLog
+                + " stackTop=" + ambientState.getStackScrollTop();
         if (mDesktopCardPlacements.size() > MAX_LOGGED_CARDS) {
             mDesktopCardPlacements.clear();
         }
