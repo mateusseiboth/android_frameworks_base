@@ -40,4 +40,14 @@
     <!-- Whether the notifications shade overlay draws its own empty state ("You're all caught
          up") instead of leaving it to the notification stack, in the dual shade. -->
     <bool name="config_composeEmptyNotificationShade">false</bool>
+
+    <!-- Whether heads-up notifications are cards at the top end of the screen, as on desktop
+         systems, while the notifications popup is closed: each shows for
+         config_desktopHeadsUpTimeoutMs and leaves (none stays, calls and sticky ones included);
+         the pointer over it, expanding it, replying or its settings restart that time once.
+         Several stack one below the other, at most config_desktopHeadsUpMaxCards, the oldest
+         leaving first. Each one stays in the notifications list. -->
+    <bool name="config_desktopHeadsUpCards">false</bool>
+    <integer name="config_desktopHeadsUpTimeoutMs">20000</integer>
+    <integer name="config_desktopHeadsUpMaxCards">4</integer>
 </resources>

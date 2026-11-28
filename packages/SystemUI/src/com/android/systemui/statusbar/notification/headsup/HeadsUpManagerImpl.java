@@ -120,6 +120,8 @@ public class HeadsUpManagerImpl
     private final int mMinimumDisplayTimeForUserInitiated;
     private final int mStickyForSomeTimeAutoDismissTime;
     private final int mAutoDismissTime;
+    /** Cards at the top end of a PC's screen: fixed time, never sticky, stacked. */
+    private final DesktopHeadsUpCards mDesktopCards;
     private final DelayableExecutor mExecutor;
 
     private final int mExtensionTime;
@@ -205,6 +207,11 @@ public class HeadsUpManagerImpl
         mStickyForSomeTimeAutoDismissTime = resources.getInteger(
                 R.integer.sticky_heads_up_notification_time);
         mAutoDismissTime = resources.getInteger(R.integer.heads_up_notification_decay);
+        mDesktopCards = DesktopHeadsUpCards.fromResources(resources);
+        if (mDesktopCards.isEnabled()) {
+            // Cards stack instead of waiting for each other.
+            mAvalancheController.setEnableAtRuntime(false);
+        }
         mExtensionTime = resources.getInteger(R.integer.ambient_notification_extension_time);
         mTouchAcceptanceDelay = resources.getInteger(R.integer.touch_acceptance_delay);
         mSnoozedPackages = new ArrayMap<>();
@@ -325,8 +332,22 @@ public class HeadsUpManagerImpl
 
             updateNotificationInternal(entry.getKey(), requestedPinnedStatus);
             entry.setInterruption();
+            removeDesktopCardsOverLimit();
         };
         mAvalancheController.update(headsUpEntry, runnable, "showNotification");
+    }
+
+    /** Past the most cards a PC's screen stacks, the oldest ones leave for the notifications list. */
+    private void removeDesktopCardsOverLimit() {
+        if (!mDesktopCards.isEnabled()) {
+            return;
+        }
+        mHeadsUpEntryMap.values().stream()
+                .sorted((a, b) -> Long.compare(b.mPostTime, a.mPostTime))
+                .skip(mDesktopCards.getMaxCards())
+                .map(HeadsUpEntry::getKey)
+                .toList()
+                .forEach(key -> removeEntry(key, "desktop card limit"));
     }
 
     @Override
@@ -857,6 +878,9 @@ public class HeadsUpManagerImpl
 
     @Override
     public @Nullable Region getTouchableRegion() {
+        if (mDesktopCards.isEnabled()) {
+            return getDesktopCardsTouchableRegion();
+        }
         NotificationEntry topEntry = getTopEntry();
 
         // This call could be made in an inconsistent state while the pinnedMode hasn't been
@@ -889,6 +913,28 @@ public class HeadsUpManagerImpl
             }
             return mTouchableRegion;
         }
+    }
+
+    /** Every stacked card takes touches, not only the top one. */
+    private @Nullable Region getDesktopCardsTouchableRegion() {
+        if (!hasPinnedHeadsUp()) {
+            return null;
+        }
+        mTouchableRegion.setEmpty();
+        int[] location = new int[2];
+        for (HeadsUpEntry headsUpEntry : mHeadsUpEntryMap.values()) {
+            ExpandableNotificationRow row = headsUpEntry.mEntry.getRow();
+            if (row == null || !headsUpEntry.mEntry.isRowPinned()) {
+                continue;
+            }
+            if (headsUpEntry.mEntry.rowIsChildInGroup() && row.getNotificationParent() != null) {
+                row = row.getNotificationParent();
+            }
+            row.getLocationOnScreen(location);
+            mTouchableRegion.op(location[0], location[1], location[0] + row.getWidth(),
+                    location[1] + row.getIntrinsicHeight(), Region.Op.UNION);
+        }
+        return mTouchableRegion.isEmpty() ? null : mTouchableRegion;
     }
 
     @Override
@@ -1017,6 +1063,10 @@ public class HeadsUpManagerImpl
             headsUpEntry.mRemoteInputActive = remoteInputActive;
             if (ExpandHeadsUpOnInlineReply.isEnabled() && remoteInputActive) {
                 headsUpEntry.mRemoteInputActivatedAtLeastOnce = true;
+            }
+            if (headsUpEntry.restartDesktopTimeOnce(remoteInputActive, "setRemoteInputActive")) {
+                updateTopHeadsUpFlow();
+                return;
             }
             if (remoteInputActive) {
                 headsUpEntry.cancelAutoRemovalCallbacks("setRemoteInputActive(true)");
@@ -1270,6 +1320,9 @@ public class HeadsUpManagerImpl
         private boolean mPaused;
         private long mPauseTime;
 
+        /** Whether an interaction already restarted this desktop card's time (only once). */
+        private boolean mDesktopTimeRestarted;
+
         public long mPostTime;
         public long mEarliestRemovalTime;
 
@@ -1409,8 +1462,8 @@ public class HeadsUpManagerImpl
             }
 
             FinishTimeUpdater finishTimeCalculator = () -> {
-                RemainingDuration remainingDuration =
-                        mAvalancheController.getDuration(this, mAutoDismissTime);
+                RemainingDuration remainingDuration = mAvalancheController.getDuration(
+                        this, mDesktopCards.findAutoDismissTime(mAutoDismissTime));
 
                 if (remainingDuration instanceof RemainingDuration.HideImmediately) {
                     if (AvalancheReplaceHunWhenCritical.isEnabled()) {
@@ -1461,6 +1514,8 @@ public class HeadsUpManagerImpl
          * @return true if the notification is sticky
          */
         public boolean isSticky() {
+            // A desktop card always leaves after its time.
+            if (mDesktopCards.isEnabled()) return false;
             if (mGutsShownPinned) return true;
 
             if (ExpandHeadsUpOnInlineReply.isEnabled()) {
@@ -1482,7 +1537,7 @@ public class HeadsUpManagerImpl
         }
 
         public boolean isStickyForSomeTime() {
-            return mEntry.isStickyAndNotDemoted();
+            return !mDesktopCards.isEnabled() && mEntry.isStickyAndNotDemoted();
         }
 
         /**
@@ -1591,6 +1646,9 @@ public class HeadsUpManagerImpl
             }
 
             this.mExpanded = expanded;
+            if (restartDesktopTimeOnce(expanded, "setExpanded")) {
+                return;
+            }
             if (expanded) {
                 cancelAutoRemovalCallbacks("setExpanded(true)");
             } else {
@@ -1607,6 +1665,10 @@ public class HeadsUpManagerImpl
          * @param paused {@code true} to pause the auto-dismiss timer, {@code false} to resume.
          */
         public void setPaused(boolean paused) {
+            // The pointer over a desktop card restarts its time once instead of holding it.
+            if (restartDesktopTimeOnce(paused, "hover")) {
+                return;
+            }
             if (mPaused == paused) {
                 return;
             }
@@ -1627,11 +1689,31 @@ public class HeadsUpManagerImpl
             }
 
             mGutsShownPinned = gutsShownPinned;
+            if (restartDesktopTimeOnce(gutsShownPinned, "setGutsShownPinned")) {
+                return;
+            }
             if (gutsShownPinned) {
                 cancelAutoRemovalCallbacks("setGutsShownPinned(true)");
             } else {
                 updateEntry(false /* updatePostTime */, "setGutsShownPinned(false)");
             }
+        }
+
+        /**
+         * On a PC's desktop, the first interaction with a card ([started]: the pointer comes over
+         * it, it expands, a reply or its settings open) gives it its whole time again, once; the
+         * card never stays. Returns false off the desktop, where the caller handles it.
+         */
+        boolean restartDesktopTimeOnce(boolean started, String reason) {
+            if (!mDesktopCards.isEnabled()) {
+                return false;
+            }
+            if (started && !mDesktopTimeRestarted) {
+                mDesktopTimeRestarted = true;
+                mPostTime = mSystemClock.elapsedRealtime();
+                updateEntry(/* updatePostTime= */ false, "desktop restart: " + reason);
+            }
+            return true;
         }
 
         /**

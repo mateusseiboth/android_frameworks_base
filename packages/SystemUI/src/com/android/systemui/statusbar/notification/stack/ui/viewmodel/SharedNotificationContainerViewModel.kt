@@ -111,6 +111,7 @@ import com.android.systemui.shade.shared.model.ShadeMode.Split
 import com.android.systemui.statusbar.notification.domain.interactor.ActiveNotificationsInteractor
 import com.android.systemui.statusbar.notification.domain.interactor.HeadsUpNotificationInteractor
 import com.android.systemui.statusbar.notification.logging.dagger.NotificationAlphaTableLog
+import com.android.systemui.statusbar.notification.headsup.DesktopHeadsUpCards
 import com.android.systemui.statusbar.notification.stack.domain.interactor.NotificationStackAppearanceInteractor
 import com.android.systemui.statusbar.notification.stack.domain.interactor.SharedNotificationContainerInteractor
 import com.android.systemui.unfold.domain.interactor.UnfoldTransitionInteractor
@@ -291,10 +292,24 @@ constructor(
             .distinctUntilChanged()
             .dumpWhileCollecting("paddingTopDimen")
 
+    /**
+     * The stack's side: the shade's, except for the heads-up cards of a PC, which sit at the top end
+     * while the notifications popup is closed (DesktopHeadsUpCards).
+     */
+    private val stackHorizontalAlignment: Flow<Alignment.Horizontal> =
+        DesktopHeadsUpCards.fromResources(context.resources).let { cards ->
+            combine(
+                shadeModeInteractor.notificationStackHorizontalAlignment,
+                shadeInteractor.isShadeAnyExpanded,
+            ) { alignment, isShadeExpanded ->
+                cards.findStackAlignment(alignment, isShadeExpanded)
+            }
+        }
+
     val configurationBasedDimensions: Flow<ConfigurationBasedDimensions> =
         if (SceneContainerFlag.isEnabled) {
                 combine(
-                    shadeModeInteractor.notificationStackHorizontalAlignment,
+                    stackHorizontalAlignment,
                     shadeModeInteractor.shadeMode,
                     shadeModeInteractor.isFullWidthShade,
                     configurationInteractor.onAnyConfigurationChange,

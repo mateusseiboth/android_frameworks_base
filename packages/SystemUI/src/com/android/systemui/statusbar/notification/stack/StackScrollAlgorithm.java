@@ -71,6 +71,9 @@ public class StackScrollAlgorithm {
 
     private StackScrollAlgorithmState mTempAlgorithmState = new StackScrollAlgorithmState();
     private boolean mIsExpanded;
+    /** Heads-ups as stacked cards on a PC (config_desktopHeadsUpCards), and the gap between them. */
+    private boolean mStackHeadsUpCards;
+    private int mHeadsUpCardGap;
     private boolean mClipNotificationScrollToTop;
     @VisibleForTesting
     float mHeadsUpInset;
@@ -116,6 +119,8 @@ public class StackScrollAlgorithm {
         mPinnedZTranslationExtra = res.getDimensionPixelSize(
                 R.dimen.heads_up_pinned_elevation);
         mGapHeight = res.getDimensionPixelSize(R.dimen.notification_section_divider_height);
+        mStackHeadsUpCards = res.getBoolean(R.bool.config_desktopHeadsUpCards);
+        mHeadsUpCardGap = res.getDimensionPixelSize(R.dimen.desktop_heads_up_card_gap);
         mGapHeightOnLockscreen = res.getDimensionPixelSize(
                 R.dimen.notification_section_divider_height_lockscreen);
         mBundleGapHeight = res.getDimensionPixelSize(
@@ -950,6 +955,8 @@ public class StackScrollAlgorithm {
 
         ExpandableNotificationRow topHeadsUpEntry = null;
         int cyclingInHunHeight = -1;
+        // Where the next stacked card goes, below the ones above it (desktop cards only).
+        float nextCardTop = headsUpTranslation;
         for (int i = 0; i < childCount; i++) {
             View child = algorithmState.visibleChildren.get(i);
             if (!(child instanceof ExpandableNotificationRow row)) {
@@ -1072,6 +1079,12 @@ public class StackScrollAlgorithm {
                         Math.max(childState.getYTranslation(), headsUpTranslation),
                         "StackScrollAlgorithm.updateHeadsUpStates.pinned");
                 childState.height = Math.max(row.getIntrinsicHeight(), childState.height);
+                if (mStackHeadsUpCards && !mIsExpanded) {
+                    // Over the desktop each card has its own place, one below the other.
+                    childState.setYTranslation(nextCardTop,
+                            "StackScrollAlgorithm.updateHeadsUpStates.desktopCard");
+                    nextCardTop += row.getIntrinsicHeight() + mHeadsUpCardGap;
+                }
                 if (NotificationHeadsUpCycling.isEnabled()) {
                     if (isCyclingIn(row, ambientState)) {
                         if (cyclingInHunHeight == -1) {

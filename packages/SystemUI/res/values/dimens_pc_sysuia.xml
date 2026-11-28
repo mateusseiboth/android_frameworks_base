@@ -23,4 +23,9 @@
     <dimen name="status_bar_media_chip_max_width">140dp</dimen>
     <!-- Length of the fade on the edges of a title that does not fit. -->
     <dimen name="status_bar_media_chip_text_fading_edge_length">12sp</dimen>
+
+    <!-- Heads-up cards at the top end of the screen (config_desktopHeadsUpCards): their margin
+         below the status bar, and the gap between stacked cards. -->
+    <dimen name="desktop_heads_up_card_margin_top">8dp</dimen>
+    <dimen name="desktop_heads_up_card_gap">8dp</dimen>
 </resources>

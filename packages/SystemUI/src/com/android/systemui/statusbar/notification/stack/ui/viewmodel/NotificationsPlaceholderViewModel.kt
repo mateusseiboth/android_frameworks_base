@@ -17,6 +17,7 @@
 package com.android.systemui.statusbar.notification.stack.ui.viewmodel
 
 import android.annotation.SuppressLint
+import android.content.res.Resources
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import com.android.app.tracing.coroutines.launchTraced as launch
@@ -31,11 +32,13 @@ import com.android.systemui.notifications.ui.YSpace
 import com.android.systemui.scene.domain.interactor.SceneInteractor
 import com.android.systemui.scene.shared.model.Overlays
 import com.android.systemui.scene.shared.model.Scenes
+import com.android.systemui.shade.ShadeDisplayAware
 import com.android.systemui.shade.domain.interactor.ShadeInteractor
 import com.android.systemui.shade.domain.interactor.ShadeModeInteractor
 import com.android.systemui.shade.shared.model.ShadeMode
 import com.android.systemui.statusbar.domain.interactor.RemoteInputInteractor
 import com.android.systemui.statusbar.notification.domain.interactor.HeadsUpNotificationInteractor
+import com.android.systemui.statusbar.notification.headsup.DesktopHeadsUpCards
 import com.android.systemui.statusbar.notification.stack.domain.interactor.NotificationStackAppearanceInteractor
 import com.android.systemui.statusbar.notification.stack.shared.model.AccessibilityScrollEvent
 import com.android.systemui.statusbar.notification.stack.shared.model.ShadeScrimBounds
@@ -50,6 +53,7 @@ import dagger.assisted.AssistedInject
 import java.util.function.Consumer
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 
@@ -61,6 +65,7 @@ class NotificationsPlaceholderViewModel
 @AssistedInject
 constructor(
     @param:Assisted private val contentKey: ContentKey,
+    @ShadeDisplayAware resources: Resources,
     private val placeholderStateStorage: NotificationPlaceholderStateStorage,
     private val interactor: NotificationStackAppearanceInteractor,
     private val sceneInteractor: SceneInteractor,
@@ -76,6 +81,8 @@ constructor(
         dumpManager = dumpManager,
         tag = "NotificationsPlaceholderViewModel",
     ) {
+
+    private val desktopHeadsUpCards = DesktopHeadsUpCards.fromResources(resources)
 
     fun setStackScrollTop(value: Float) {
         placeholderStateStorage.setStackScrollTop(contentKey, value)
@@ -125,9 +132,20 @@ constructor(
                 initialValue = getNotificationsShadeContentKey(shadeModeInteractor.shadeMode.value)
             )
 
-    /** @see NotificationStackAppearanceInteractor.notificationStackHorizontalAlignment */
+    /**
+     * @see NotificationStackAppearanceInteractor.notificationStackHorizontalAlignment; the heads-up
+     *   cards of a PC sit at the top end while the notifications popup is closed.
+     */
     val horizontalAlignment: Alignment.Horizontal by
-        shadeModeInteractor.notificationStackHorizontalAlignment.hydratedStateOf()
+        combine(
+                shadeModeInteractor.notificationStackHorizontalAlignment,
+                shadeInteractor.isShadeAnyExpanded,
+            ) { alignment, isShadeExpanded ->
+                desktopHeadsUpCards.findStackAlignment(alignment, isShadeExpanded)
+            }
+            .hydratedStateOf(
+                initialValue = shadeModeInteractor.notificationStackHorizontalAlignment.value
+            )
 
     /**
      * Whether the current gesture is expanding a Notification. If true, the NSSL has already

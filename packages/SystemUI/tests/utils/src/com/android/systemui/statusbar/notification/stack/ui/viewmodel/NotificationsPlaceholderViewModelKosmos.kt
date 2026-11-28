@@ -16,6 +16,7 @@
 
 package com.android.systemui.statusbar.notification.stack.ui.viewmodel
 
+import android.content.applicationContext
 import com.android.compose.animation.scene.ContentKey
 import com.android.compose.animation.scene.SceneKey
 import com.android.systemui.dump.dumpManager
@@ -35,6 +36,7 @@ val Kosmos.notificationsPlaceholderViewModelFactory by Fixture {
         override fun create(contentKey: ContentKey): NotificationsPlaceholderViewModel {
             return NotificationsPlaceholderViewModel(
                 contentKey = contentKey,
+                resources = applicationContext.resources,
                 placeholderStateStorage = notificationPlaceholderStateStorage,
                 interactor = notificationStackAppearanceInteractor,
                 sceneInteractor = sceneInteractor,

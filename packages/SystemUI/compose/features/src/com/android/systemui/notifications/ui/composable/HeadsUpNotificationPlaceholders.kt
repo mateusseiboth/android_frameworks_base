@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.booleanResource
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -163,6 +164,10 @@ fun ContentScope.SnoozableHeadsUpNotificationPlaceholder(
 @Composable
 private fun headsUpTopInset(): Dp {
     val safeTop = WindowInsets.safeContent.asPaddingValues().calculateTopPadding()
+    // The heads-up cards of a PC float a margin below the status bar, like its popups.
+    if (booleanResource(R.bool.config_desktopHeadsUpCards)) {
+        return safeTop + dimensionResource(R.dimen.desktop_heads_up_card_margin_top)
+    }
     // A constant min padding when the device doesn't require safeTop (such as on Desktop)
     return maxOf(safeTop, dimensionResource(R.dimen.heads_up_status_bar_padding))
 }
