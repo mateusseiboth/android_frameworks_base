@@ -16,6 +16,7 @@
 
 package com.android.systemui.statusbar.quickactions.media.domain.interactor
 
+import android.util.Log
 import androidx.compose.runtime.snapshotFlow
 import com.android.systemui.dagger.SysUISingleton
 import com.android.systemui.dagger.qualifiers.Background
@@ -32,6 +33,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 
 /**
@@ -52,9 +55,35 @@ constructor(
 ) {
     private val isEnabled = MutableStateFlow(false)
 
-    private val mediaControlChipModelForScene: Flow<MediaControlChipModel?> = snapshotFlow {
+    private val mediaControlChipModelFromCards: Flow<MediaControlChipModel?> = snapshotFlow {
         mediaRepository.currentMedia.firstOrNull { it.isActive }?.toMediaControlChipModel()
     }
+
+    /**
+     * The current user's active media straight from the media pipeline, playing first: the chip
+     * shows as soon as something plays, also before (or without) the media cards' list, which only
+     * changes through Compose snapshots.
+     */
+    private val mediaControlChipModelFromPipeline: Flow<MediaControlChipModel?> =
+        mediaRepository.currentUserEntries.map { entries ->
+            entries.values
+                .filter { it.active }
+                .sortedByDescending { it.isPlaying == true }
+                .firstOrNull()
+                ?.toMediaControlChipModel()
+        }
+
+    private val mediaControlChipModelForScene: Flow<MediaControlChipModel?> =
+        combine(mediaControlChipModelFromCards, mediaControlChipModelFromPipeline) {
+                fromCards,
+                fromPipeline ->
+                fromCards ?: fromPipeline
+            }
+            .onEach { model ->
+                Log.d(TAG, "chip: ${model?.appName} \"${model?.songName}\" " +
+                    "(media ${mediaRepository.currentUserEntries.value.size}, " +
+                    "cards ${mediaRepository.currentMedia.size})")
+            }
 
     /**
      * A flow of [MediaControlChipModel] representing the current state of the media controls chip.
@@ -95,6 +124,8 @@ constructor(
         isEnabled.value = true
     }
 }
+
+private const val TAG = "MediaControlChip"
 
 private fun MediaDataModel.toMediaControlChipModel(): MediaControlChipModel {
     return MediaControlChipModel.Compose(

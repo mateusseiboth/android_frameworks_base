@@ -16,6 +16,7 @@
 
 package com.android.systemui.statusbar.quickactions.media
 
+import android.util.Log
 import com.android.systemui.CoreStartable
 import com.android.systemui.dagger.SysUISingleton
 import com.android.systemui.dagger.qualifiers.Background
@@ -38,6 +39,7 @@ constructor(
 ) : CoreStartable {
 
     override fun start() {
+        Log.d("MediaControlChip", "media chip started")
         bgScope.launch { mediaControlChipInteractor.initialize() }
     }
 }
