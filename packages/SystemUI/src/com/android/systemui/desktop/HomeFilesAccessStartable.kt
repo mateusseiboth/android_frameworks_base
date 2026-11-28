@@ -62,7 +62,7 @@ constructor(
     private fun allowFor(userId: Int) {
         val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
         context.packageManager
-            .queryIntentActivitiesAsUser(home, PackageManager.MATCH_SYSTEM_ONLY, userId)
+            .queryIntentActivitiesAsUser(home, MATCH_ANY_BOOT_STATE or PackageManager.MATCH_SYSTEM_ONLY, userId)
             .map { it.activityInfo.packageName }
             .distinct()
             .filter { isAskingForFiles(it, userId) }
@@ -74,7 +74,7 @@ constructor(
             val info =
                 context.packageManager.getPackageInfoAsUser(
                     packageName,
-                    PackageManager.GET_PERMISSIONS,
+                    MATCH_ANY_BOOT_STATE or PackageManager.GET_PERMISSIONS,
                     userId,
                 )
             val isSystem = (info.applicationInfo?.flags ?: 0) and ApplicationInfo.FLAG_SYSTEM != 0
@@ -107,5 +107,10 @@ constructor(
 
     private companion object {
         const val TAG = "HomeFilesAccess"
+
+        // The user is switched to before it is unlocked: a home app that is not direct boot aware only
+        // resolves with both flags.
+        const val MATCH_ANY_BOOT_STATE =
+            PackageManager.MATCH_DIRECT_BOOT_AWARE or PackageManager.MATCH_DIRECT_BOOT_UNAWARE
     }
 }
