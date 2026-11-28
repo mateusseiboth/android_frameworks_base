@@ -24,7 +24,7 @@ import com.android.wm.shell.shared.desktopmode.DesktopState
 import dagger.Module
 import dagger.Provides
 
-@Module(includes = [DesktopHeadsUpModule::class, MediaControlChipModule::class])
+@Module(includes = [DesktopHeadsUpModule::class, MediaControlChipModule::class, HomeFilesAccessModule::class])
 class DesktopModule {
     @Provides
     @SysUISingleton
