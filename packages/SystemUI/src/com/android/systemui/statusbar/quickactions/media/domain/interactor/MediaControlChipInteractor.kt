@@ -16,15 +16,19 @@
 
 package com.android.systemui.statusbar.quickactions.media.domain.interactor
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.snapshotFlow
 import com.android.systemui.dagger.SysUISingleton
+import com.android.systemui.dagger.qualifiers.Application
 import com.android.systemui.dagger.qualifiers.Background
+import com.android.systemui.media.controls.shared.model.MediaAction
 import com.android.systemui.media.controls.shared.model.MediaData
 import com.android.systemui.media.remedia.data.model.MediaDataModel
 import com.android.systemui.media.remedia.data.repository.MediaRepositoryImpl
 import com.android.systemui.media.remedia.shared.flag.MediaControlsInComposeFlag
 import com.android.systemui.res.R
+import com.android.systemui.statusbar.quickactions.media.data.ActiveMediaSessions
 import com.android.systemui.statusbar.quickactions.media.shared.model.MediaControlChipModel
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -50,8 +54,10 @@ import kotlinx.coroutines.flow.stateIn
 class MediaControlChipInteractor
 @Inject
 constructor(
+    @Application private val context: Context,
     @Background private val backgroundScope: CoroutineScope,
     private val mediaRepository: MediaRepositoryImpl,
+    private val activeMediaSessions: ActiveMediaSessions,
 ) {
     private val isEnabled = MutableStateFlow(false)
 
@@ -73,16 +79,23 @@ constructor(
                 ?.toMediaControlChipModel()
         }
 
+    /** What plays without a media notification (a video in the foreground), from its session. */
+    private val mediaControlChipModelFromSessions: Flow<MediaControlChipModel?> =
+        activeMediaSessions.current.map { session -> session?.toMediaControlChipModel() }
+
     private val mediaControlChipModelForScene: Flow<MediaControlChipModel?> =
-        combine(mediaControlChipModelFromCards, mediaControlChipModelFromPipeline) {
-                fromCards,
-                fromPipeline ->
-                fromCards ?: fromPipeline
+        combine(
+                mediaControlChipModelFromCards,
+                mediaControlChipModelFromPipeline,
+                mediaControlChipModelFromSessions,
+            ) { fromCards, fromPipeline, fromSessions ->
+                fromCards ?: fromPipeline ?: fromSessions
             }
             .onEach { model ->
                 Log.i(TAG, "chip: ${model?.appName} \"${model?.songName}\" " +
                     "(media ${mediaRepository.currentUserEntries.value.size}, " +
-                    "cards ${mediaRepository.currentMedia.size})")
+                    "cards ${mediaRepository.currentMedia.size}, " +
+                    "session ${activeMediaSessions.current.value?.appName})")
             }
 
     /**
@@ -122,6 +135,33 @@ constructor(
      */
     fun initialize() {
         isEnabled.value = true
+        activeMediaSessions.start()
+        Log.i(TAG, "media chip enabled")
+    }
+
+    private fun ActiveMediaSessions.Session.toMediaControlChipModel(): MediaControlChipModel {
+        val controls = controller.transportControls
+        val playOrPause =
+            MediaAction(
+                icon =
+                    context.getDrawable(
+                        android.R.drawable.ic_media_pause.takeIf { isPlaying }
+                            ?: android.R.drawable.ic_media_play
+                    ),
+                action = Runnable { if (isPlaying) controls.pause() else controls.play() },
+                contentDescription =
+                    context.getString(
+                        R.string.controls_media_button_pause.takeIf { isPlaying }
+                            ?: R.string.controls_media_button_play
+                    ),
+                background = null,
+            )
+        return MediaControlChipModel.Legacy(
+            appIcon = appIcon,
+            appName = appName,
+            songName = title,
+            playOrPause = playOrPause,
+        )
     }
 }
 

@@ -20,6 +20,8 @@ import android.content.applicationContext
 import com.android.systemui.kosmos.Kosmos
 import com.android.systemui.media.controls.ui.view.qsMediaHost
 import com.android.systemui.media.remedia.ui.viewmodel.factory.mediaViewModelFactory
+import com.android.systemui.media.remedia.data.repository.mediaRepository
+import com.android.systemui.statusbar.quickactions.media.domain.interactor.activeMediaSessions
 import com.android.systemui.statusbar.quickactions.media.domain.interactor.mediaControlChipInteractor
 
 val Kosmos.mediaControlPopupViewModelFactory by
@@ -29,6 +31,8 @@ val Kosmos.mediaControlPopupViewModelFactory by
                 MediaControlPopupViewModel(
                     mediaHost = qsMediaHost,
                     mediaViewModelFactory = mediaViewModelFactory,
+                    activeMediaSessions = activeMediaSessions,
+                    mediaRepository = mediaRepository,
                 )
         }
     }

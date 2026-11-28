@@ -16,14 +16,32 @@
 
 package com.android.systemui.statusbar.quickactions.media.domain.interactor
 
+import android.content.applicationContext
+import android.os.Handler
+import android.os.Looper
+import com.android.systemui.concurrency.fakeExecutor
 import com.android.systemui.kosmos.Kosmos
 import com.android.systemui.kosmos.backgroundScope
 import com.android.systemui.media.remedia.data.repository.mediaRepository
+import com.android.systemui.settings.userTracker
+import com.android.systemui.statusbar.quickactions.media.data.ActiveMediaSessions
 
 val Kosmos.mediaControlChipInteractor: MediaControlChipInteractor by
     Kosmos.Fixture {
         MediaControlChipInteractor(
+            context = applicationContext,
             backgroundScope = backgroundScope,
             mediaRepository = mediaRepository,
+            activeMediaSessions = activeMediaSessions,
+        )
+    }
+
+val Kosmos.activeMediaSessions: ActiveMediaSessions by
+    Kosmos.Fixture {
+        ActiveMediaSessions(
+            applicationContext,
+            Handler(Looper.getMainLooper()),
+            fakeExecutor,
+            userTracker,
         )
     }

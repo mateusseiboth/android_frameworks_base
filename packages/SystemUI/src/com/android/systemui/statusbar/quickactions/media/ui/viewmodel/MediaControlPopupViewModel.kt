@@ -22,16 +22,29 @@ import com.android.systemui.media.controls.ui.view.MediaHostState
 import com.android.systemui.media.dagger.MediaModule
 import com.android.systemui.media.remedia.ui.viewmodel.MediaViewModel
 import com.android.systemui.statusbar.quickactions.popups.ui.viewmodel.StatusBarPopupViewModel
+import com.android.systemui.media.remedia.data.repository.MediaRepositoryImpl
+import com.android.systemui.statusbar.quickactions.media.data.ActiveMediaSessions
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Named
+import kotlinx.coroutines.flow.StateFlow
 
 class MediaControlPopupViewModel
 @AssistedInject
 constructor(
     val mediaViewModelFactory: MediaViewModel.Factory,
     @param:Named(MediaModule.POPUP) val mediaHost: MediaHost,
+    activeMediaSessions: ActiveMediaSessions,
+    private val mediaRepository: MediaRepositoryImpl,
 ) : StatusBarPopupViewModel {
+
+    /** What plays without a media card (no media notification), with its controls. */
+    val activeSession: StateFlow<ActiveMediaSessions.Session?> = activeMediaSessions.current
+
+    /** Whether the media cards have something to show; else the popup shows [activeSession]. */
+    val hasMediaCards: Boolean
+        get() = mediaRepository.currentMedia.any { it.isActive }
+
 
     init {
         with(mediaHost) {
