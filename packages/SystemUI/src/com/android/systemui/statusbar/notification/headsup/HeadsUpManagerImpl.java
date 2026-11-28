@@ -208,10 +208,9 @@ public class HeadsUpManagerImpl
                 R.integer.sticky_heads_up_notification_time);
         mAutoDismissTime = resources.getInteger(R.integer.heads_up_notification_decay);
         mDesktopCards = DesktopHeadsUpCards.fromResources(resources);
-        if (mDesktopCards.isEnabled()) {
-            // Cards stack instead of waiting for each other.
-            mAvalancheController.setEnableAtRuntime(false);
-        }
+        // Cards stack instead of waiting for each other, for good: the reordering listeners turn
+        // the runtime switch back on.
+        mAvalancheController.setStackingCards(mDesktopCards.isEnabled());
         mExtensionTime = resources.getInteger(R.integer.ambient_notification_extension_time);
         mTouchAcceptanceDelay = resources.getInteger(R.integer.touch_acceptance_delay);
         mSnoozedPackages = new ArrayMap<>();

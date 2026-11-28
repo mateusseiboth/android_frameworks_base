@@ -565,6 +565,8 @@ public class NotificationStackScrollLayout
 
     /** Should we set an out path for the drawing canvas */
     private boolean mShouldUseNegativeRoundedRectClipping = false;
+    /** Heads-ups as cards over a PC's screen (config_desktopHeadsUpCards). */
+    private final boolean mDesktopHeadsUpCards;
 
     private int mRoundedRectClippingLeft;
     private int mRoundedRectClippingTop;
@@ -690,6 +692,7 @@ public class NotificationStackScrollLayout
         mSectionsManager.initialize(this);
 
         mAmbientState = Dependency.get(AmbientState.class);
+        mDesktopHeadsUpCards = res.getBoolean(R.bool.config_desktopHeadsUpCards);
         int minHeight = res.getDimensionPixelSize(R.dimen.notification_min_height);
         int maxHeight = res.getDimensionPixelSize(R.dimen.notification_max_height);
         mSplitShadeMinContentHeight = res.getDimensionPixelSize(
@@ -6000,6 +6003,23 @@ public class NotificationStackScrollLayout
     public void setInHeadsUpPinnedMode(boolean inHeadsUpPinnedMode) {
         mInHeadsUpPinnedMode = inHeadsUpPinnedMode;
         updateClipping();
+        if (mDesktopHeadsUpCards && inHeadsUpPinnedMode) {
+            // Where the stack of the heads-up cards of a PC is, for `logcat -s DesktopHeadsUpCards`.
+            post(this::logDesktopCardsStack);
+        }
+    }
+
+    private void logDesktopCardsStack() {
+        int[] location = new int[2];
+        getLocationOnScreen(location);
+        Log.d("DesktopHeadsUpCards", "stack at " + location[0] + "," + location[1]
+                + " size " + getWidth() + "x" + getHeight() + " alpha " + getAlpha()
+                + " visibility " + getVisibility() + " display " + getContext().getDisplayId()
+                + " clipBounds " + getClipBounds() + " roundedClip " + mShouldUseRoundedRectClipping
+                + " negativeClip " + mShouldUseNegativeRoundedRectClipping
+                + " clippedByPanels " + isClippedByPanels()
+                + " expansion " + mAmbientState.getExpansionFraction()
+                + " qsExpansion " + mAmbientState.getQsExpansionFraction());
     }
 
     /** TODO(b/328390331) make this private, when {@link SceneContainerFlag} is removed */
@@ -6950,7 +6970,19 @@ public class NotificationStackScrollLayout
         }
     }
 
+    /**
+     * While both popups are closed only the heads-up cards of a PC draw, over the whole screen: the
+     * shapes of the popups (the quick settings one sits where the cards go) must not cut them.
+     */
+    private boolean isClippedByPanels() {
+        return !mDesktopHeadsUpCards || mAmbientState.getExpansionFraction() > 0f
+                || mAmbientState.getQsExpansionFraction() > 0f;
+    }
+
     private void applyClipToCanvas(Canvas canvas) {
+        if (!isClippedByPanels()) {
+            return;
+        }
         if (mShouldUseRoundedRectClipping) {
             // clip by the positive path if it is defined
             canvas.clipPath(mRoundedClipPath);
@@ -6963,8 +6995,8 @@ public class NotificationStackScrollLayout
 
     @Override
     protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
-        boolean shouldUseClipping =
-                mShouldUseRoundedRectClipping || mShouldUseNegativeRoundedRectClipping;
+        boolean shouldUseClipping = isClippedByPanels()
+                && (mShouldUseRoundedRectClipping || mShouldUseNegativeRoundedRectClipping);
         if (mBlurEffect != null) {
             if (shouldSkipBlurForChild(child)) {
                 // skip drawing this child during the regular dispatchDraw pass

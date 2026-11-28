@@ -113,8 +113,14 @@ constructor(
         return getKey(headsUpEntryShowing)
     }
 
+    /**
+     * Heads-up cards of a PC (config_desktopHeadsUpCards) stack instead of waiting for each other:
+     * the throttling stays off whatever [enableAtRuntime] says.
+     */
+    var isStackingCards = false
+
     fun isEnabled(): Boolean {
-        return NotificationThrottleHun.isEnabled && enableAtRuntime
+        return NotificationThrottleHun.isEnabled && enableAtRuntime && !isStackingCards
     }
 
     /** Run or delay Runnable for given HeadsUpEntry */
