@@ -50,4 +50,8 @@
     <bool name="config_desktopHeadsUpCards">false</bool>
     <integer name="config_desktopHeadsUpTimeoutMs">20000</integer>
     <integer name="config_desktopHeadsUpMaxCards">4</integer>
+
+    <!-- Whether the shade window (its popups and heads-up notifications) also goes to the display
+         that gets the focus, besides the one whose status bar was touched. -->
+    <bool name="config_shadeFollowsFocusedDisplay">false</bool>
 </resources>

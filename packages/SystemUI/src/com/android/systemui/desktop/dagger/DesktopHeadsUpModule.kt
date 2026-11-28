@@ -18,6 +18,7 @@ package com.android.systemui.desktop.dagger
 
 import com.android.systemui.CoreStartable
 import com.android.systemui.desktop.DesktopHeadsUpAppearanceControllerStartable
+import com.android.systemui.desktop.ShadeFollowsFocusedDisplayStartable
 import dagger.Binds
 import dagger.Module
 import dagger.multibindings.ClassKey
@@ -32,5 +33,13 @@ interface DesktopHeadsUpModule {
     @ClassKey(DesktopHeadsUpAppearanceControllerStartable::class)
     fun bindDesktopHeadsUpAppearanceControllerStartable(
         startable: DesktopHeadsUpAppearanceControllerStartable
+    ): CoreStartable
+
+    /** Moves the shade and its heads-up cards to the focused display. */
+    @Binds
+    @IntoMap
+    @ClassKey(ShadeFollowsFocusedDisplayStartable::class)
+    fun bindShadeFollowsFocusedDisplayStartable(
+        startable: ShadeFollowsFocusedDisplayStartable
     ): CoreStartable
 }
