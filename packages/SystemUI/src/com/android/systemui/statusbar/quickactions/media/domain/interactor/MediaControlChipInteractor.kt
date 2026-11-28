@@ -80,7 +80,7 @@ constructor(
                 fromCards ?: fromPipeline
             }
             .onEach { model ->
-                Log.d(TAG, "chip: ${model?.appName} \"${model?.songName}\" " +
+                Log.i(TAG, "chip: ${model?.appName} \"${model?.songName}\" " +
                     "(media ${mediaRepository.currentUserEntries.value.size}, " +
                     "cards ${mediaRepository.currentMedia.size})")
             }

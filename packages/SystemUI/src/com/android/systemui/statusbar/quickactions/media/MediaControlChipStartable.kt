@@ -39,7 +39,7 @@ constructor(
 ) : CoreStartable {
 
     override fun start() {
-        Log.d("MediaControlChip", "media chip started")
+        Log.i("MediaControlChip", "media chip started")
         bgScope.launch { mediaControlChipInteractor.initialize() }
     }
 }

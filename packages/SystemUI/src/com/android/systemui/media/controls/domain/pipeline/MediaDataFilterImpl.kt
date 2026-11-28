@@ -86,6 +86,15 @@ constructor(
             mediaPipelineRepository.removeMediaEntry(oldKey)
         }
         mediaPipelineRepository.addMediaEntry(key, data)
+        // Where the desktop's media chip gets its media (HSUM: SystemUI is user 0, the media the
+        // user's), for `logcat -s MediaControlChip`.
+        Log.i(
+            "MediaControlChip",
+            "media $key of user ${data.userId}: ${data.app} \"${data.song}\" active=${data.active}" +
+                " playing=${data.isPlaying} currentProfile=" +
+                "${lockscreenUserManager.isCurrentProfile(data.userId)} available=" +
+                "${lockscreenUserManager.isProfileAvailable(data.userId)}",
+        )
 
         if (
             !lockscreenUserManager.isCurrentProfile(data.userId) ||

@@ -208,6 +208,12 @@ class MediaDataProcessor(
     }
 
     fun onNotificationAdded(key: String, sbn: StatusBarNotification) {
+        if (sbn.notification.isMediaNotification) {
+            Log.i(
+                "MediaControlChip",
+                "media notification $key of user ${sbn.userId}, media player $useQsMediaPlayer",
+            )
+        }
         if (useQsMediaPlayer && isMediaNotification(sbn)) {
             var isNewlyActiveEntry = false
             var isConvertingToActive = false
