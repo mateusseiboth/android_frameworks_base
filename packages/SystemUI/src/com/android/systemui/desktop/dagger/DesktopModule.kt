@@ -19,11 +19,12 @@ package com.android.systemui.desktop.dagger
 import android.content.Context
 import com.android.systemui.dagger.SysUISingleton
 import com.android.systemui.dagger.qualifiers.Application
+import com.android.systemui.statusbar.quickactions.media.dagger.MediaControlChipModule
 import com.android.wm.shell.shared.desktopmode.DesktopState
 import dagger.Module
 import dagger.Provides
 
-@Module(includes = [DesktopHeadsUpModule::class])
+@Module(includes = [DesktopHeadsUpModule::class, MediaControlChipModule::class])
 class DesktopModule {
     @Provides
     @SysUISingleton
