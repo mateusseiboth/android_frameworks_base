@@ -1084,7 +1084,7 @@ public class StackScrollAlgorithm {
                         Math.max(childState.getYTranslation(), headsUpTranslation),
                         "StackScrollAlgorithm.updateHeadsUpStates.pinned");
                 childState.height = Math.max(row.getIntrinsicHeight(), childState.height);
-                if (mStackHeadsUpCards
+                if (mStackHeadsUpCards && !ambientState.isOnKeyguard()
                         && (!mIsExpanded || ambientState.getExpansionFraction() == 0f)) {
                     // Over the desktop each card has its own place, below the ones above it; the
                     // first one stays where any heads-up goes.
@@ -1093,6 +1093,8 @@ public class StackScrollAlgorithm {
                             "StackScrollAlgorithm.updateHeadsUpStates.desktopCard");
                     nextCardTop = childState.getYTranslation() + row.getIntrinsicHeight()
                             + mHeadsUpCardGap;
+                    // DesktopHeadsUpCardsWindow draws the cards; the stack keeps their place only.
+                    childState.setAlpha(0f, "StackScrollAlgorithm.updateHeadsUpStates.desktopCard");
                 }
                 if (NotificationHeadsUpCycling.isEnabled()) {
                     if (isCyclingIn(row, ambientState)) {

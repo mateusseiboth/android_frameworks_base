@@ -6025,7 +6025,11 @@ public class NotificationStackScrollLayout
                 + " qsExpansion " + mAmbientState.getQsExpansionFraction()
                 + " headsUpTop " + mAmbientState.getHeadsUpTop()
                 + " headsUpBottom " + mHeadsUpAnimator.getHeadsUpAppearHeightBottom()
-                + " children " + getChildCount());
+                + " childCount=" + getChildCount() + " laidOut=" + isLaidOut()
+                + " layoutRequested=" + isLayoutRequested()
+                + " rootVisibility=" + getRootView().getVisibility()
+                + " windowVisibility=" + getWindowVisibility()
+                + " attached=" + isAttachedToWindow());
         for (int i = 0; i < getChildCount(); i++) {
             if (getChildAt(i) instanceof ExpandableNotificationRow row
                     && (row.isHeadsUp() || row.isHeadsUpAnimatingAway())) {

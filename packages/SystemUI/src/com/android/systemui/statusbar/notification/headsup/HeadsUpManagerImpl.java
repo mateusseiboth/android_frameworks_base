@@ -878,7 +878,9 @@ public class HeadsUpManagerImpl
     @Override
     public @Nullable Region getTouchableRegion() {
         if (mDesktopCards.isEnabled()) {
-            return getDesktopCardsTouchableRegion();
+            // The cards of a PC have their own window (DesktopHeadsUpCardsWindow), which takes
+            // their touches; the shade window takes none for them.
+            return null;
         }
         NotificationEntry topEntry = getTopEntry();
 
@@ -912,28 +914,6 @@ public class HeadsUpManagerImpl
             }
             return mTouchableRegion;
         }
-    }
-
-    /** Every stacked card takes touches, not only the top one. */
-    private @Nullable Region getDesktopCardsTouchableRegion() {
-        if (!hasPinnedHeadsUp()) {
-            return null;
-        }
-        mTouchableRegion.setEmpty();
-        int[] location = new int[2];
-        for (HeadsUpEntry headsUpEntry : mHeadsUpEntryMap.values()) {
-            ExpandableNotificationRow row = headsUpEntry.mEntry.getRow();
-            if (row == null || !headsUpEntry.mEntry.isRowPinned()) {
-                continue;
-            }
-            if (headsUpEntry.mEntry.rowIsChildInGroup() && row.getNotificationParent() != null) {
-                row = row.getNotificationParent();
-            }
-            row.getLocationOnScreen(location);
-            mTouchableRegion.op(location[0], location[1], location[0] + row.getWidth(),
-                    location[1] + row.getIntrinsicHeight(), Region.Op.UNION);
-        }
-        return mTouchableRegion.isEmpty() ? null : mTouchableRegion;
     }
 
     @Override
